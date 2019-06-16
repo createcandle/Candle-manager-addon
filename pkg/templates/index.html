@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        
+        <title>Candle manager</title>
+        
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <meta name="description" content="Candle manager allows you to easily upload code to Arduino devices">
+        <meta name="author" content="CreateCandle">
+        
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/wizard.css') }}">
+    </head>
+    <body>
+
+        <div id="container">
+    
+            <div id="centered">
+            
+            
+                <div id="logo-container">
+                    <img id="logo" src="{{ url_for('static', filename='images/candle_logo_simple.png') }}" />
+                </div>
+            
+                <div id="wizard-container" class="wizard-container">
+                    <ol class="wizard numeric">
+                        <li class="active">
+                            <span> 1 </span>
+                            <div>Plug in</div>
+                        </li>
+                        <li>
+                            <span> 2 </span>
+                            <div>Select type</div>
+                        </li>
+                        <li>
+                            <span> 3 </span>
+                            <div>Change settings</div>
+                        </li>
+                        <li>
+                            <span> 4 </span>
+                            <div>Upload</div>
+                        </li>
+                        <li>
+                            <span> 5 </span>
+                            <div>Check</div>
+                        </li>
+                        <li>
+                            <span> 6 </span>
+                            <div>Done</div>
+                        </li>
+                    </ol>
+                </div>
+                
+                <div id="content">
+                
+                    <div id="step1" class="active">
+                        <h2>Plug in USB</h2>
+                        <p>Please plug in the Arduino. Once it's connected, you will be automatically taken to step 2.</p>
+                        <div id="spinner_container">
+                            <div class="spinner">
+                              <div class="left-cube"></div>
+                              <div class="right-cube"></div>
+                            </div>
+                        </div>
+                    
+                    </div>
+                    <div id="step2">
+                        <h2>Select type</h2>
+                        <p>Which type of device have you just plugged in?</p>
+                        <div id="sources-container"></div>
+                    
+                    </div>
+                    <div id="step3">
+                        <h2>Change settings</h2>
+                        <p>If you want you can change these default settings. You can also learn more about how the device works in the description below. When you are ready to continue please click on the <em>next</em> button.</p>
+                        <div class="two columns">
+                            
+                            <div id="settings-container">
+                                <div id="settings-errors" class="error hidden"></div>
+                                <div id="settings"></div>
+                            </div>
+                            <div id="settings-explanation-container">
+                                <h3>Description</h3>
+                                <textarea id="settings-explanation"></textarea>
+                            </div>
+                        </div>
+                        <div class="button-footer">
+                            <button class="back">Back</button>
+                            <button class="next">Next</button>
+                        </div>
+                    </div>
+                    <div id="step4">
+                        <h2>Uploading to Arduino</h2>
+                        <p>This may take a few minutes. Please do not unplug your device until this proces is complete.</p>
+                        
+                        <div id="upload-progress_bar">
+                            <div id="code-progress" class="progress_complete">Code</div>
+                            <div id="libraries-progress">Libraries</div>
+                            <div id="compile-progress">Compiling</div>
+                            <div id="test-progress">Testing</div>
+                            <div id="upload-progress">Upload</div>
+                        </div>
+                        
+                        <div id="upload-output" class="hidden error">
+                            <div id="upload-status">Starting...</div>
+                            <div id="errors-container"></div>
+                            <div><p><em>Refresh this page to start again.</em></p></div>
+                        </div>
+                        
+                        <div id="code-container" class="hidden">
+                            <button class="show code">Inspect the code</button>
+                            <textarea id="new-code" class="hidden"></textarea>
+                        </div>
+                            
+                        <div class="button-footer">
+                            <button class="restart hidden">Restart</button>
+                            <button class="next hidden">Next</button>
+                        </div>
+                    </div>
+                    <div id="step5">
+                        <h2>Check</h2>
+                        <p>When you connect your device via USB you can listen to what it's thinking. Check these message for any errors. This will be updated for about 60 seconds.</p>
+                        <div id="serial-output-container"></div>
+                        <div class="button-footer">
+                            <div></div>
+                            <button class="next">Next</button>
+                        </div>
+                    </div>
+                    <div id="step6">
+                        <h2>Done</h2>
+                        <p>You can now close this tab and go back to the WebThings Gateway.</p>
+                        <p>If you have already attached the radio device, then your new creation should show up in the list of new available things there.</p>
+                        <div class="button-footer">
+                            <button class="restart">Restart</button>
+                            <div></div>
+                        </div>
+                    
+                    </div>
+                
+                </div>
+                
+            
+            </div>
+            
+            
+            
+        </div>
+        
+        <script src="{{ url_for('static', filename='js/jquery-3.4.1.min.js') }}" type="text/javascript"></script>
+        <script src="{{ url_for('static', filename='js/wizard.jquery.js') }}" type="text/javascript"></script>
+        <script src="{{ url_for('static', filename='js/main.js') }}" type="text/javascript"></script>
+        
+    </body>
+</html>
+
