@@ -42,8 +42,12 @@ def install_packages():
 
 try:
     sys.path.append(os.path.join(_BASE_DIR, 'lib'))
+except:
+    pass
 
-    import Flask  # noqa: F401
+try:
+    import flask  # noqa: F401
+    import pyserial
 except ImportError:
     # If installation failed, exit with 100 to tell the gateway not to restart
     # this process.
