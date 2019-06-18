@@ -126,12 +126,14 @@ class CandleAdapter(Adapter):
         if self.json_sketches_url.startswith("http") and self.json_sketches_url.endswith(".json"):
             try:
                 response = requests.get(self.json_sketches_url, allow_redirects=True) # was True
-                print("response.status_code = " + str(response.status_code))
-                print("response.encoding = " + str(response.encoding))
-                print("Got response")
-                print("response: " + str(response))
+                
+                #print("response.status_code = " + str(response.status_code))
+                #print("response.encoding = " + str(response.encoding))
+                #print("Got response")
+                #print("response: " + str(response))
                 json_sketches_data = json.loads(response.content.decode('utf-8'))
-                print(str(json_sketches_data["sketch_urls"]))
+                if self.DEBUG:
+                    print(str(json_sketches_data["sketch_urls"]))
                 for sketch_url in json_sketches_data["sketch_urls"]:
                     self.download_source(sketch_url)
             except Exception as e:
@@ -205,9 +207,9 @@ class CandleAdapter(Adapter):
         print(str(__name__))
         
         # Disable outputting to console
-        if not self.DEBUG:
-            log = logging.getLogger('werkzeug')
-            log.setLevel(logging.ERROR)
+        #if not self.DEBUG:
+        #    log = logging.getLogger('werkzeug')
+        #    log.setLevel(logging.ERROR)
         
         app = Flask(__name__)
         
@@ -691,7 +693,7 @@ class CandleAdapter(Adapter):
                 library_name = ""
                 try:
                     # EXTRACTING LIBRARY NAME
-                    pattern = '#include\s(\"|\<)(avr)?\/?(\w+)\.?h?(\"|\>)?\s*\/?\/?\s?(\"([A-Za-z0-9+\s-]*)\")?'
+                    pattern = '^\s*#include\s(\"|\<)(avr)?\/?(\w+)\.?h?(\"|\>)?\s*\/?\/?\s?(\"([A-Za-z0-9+\s-]*)\")?'
                     matched = re.match(pattern, line, re.I)
                     if matched:
                         if str(matched.group(2)) == "avr" or str(matched.group(2)) == "AVR":
