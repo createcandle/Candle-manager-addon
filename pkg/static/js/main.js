@@ -53,7 +53,7 @@ function poll_USB(){
         
         if(json.state != undefined){
             if ( json.state == "stable" ) {
-                // console.log("No change in connected USB devices")// No change in the number of attached USB devices.
+                console.log("No change in connected USB devices")// No change in the number of attached USB devices.
             }
             else if ( json.state == "added" ){
                 console.log("New USB device connected")
@@ -332,12 +332,11 @@ function upload(){
             console.log("Upload went ok");
             $('#upload-progress').addClass('progress_complete');
             setTimeout(function(){
+                //Finally, show the last step to the user
                 $("ol.wizard.numeric").wizard('nextStep');
                 show_step(5);
                 show_serial_debug();
             }, 2000);
-            //Finally, show the step to the user
-
         }
     });
 }
