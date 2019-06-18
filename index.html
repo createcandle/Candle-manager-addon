@@ -1,0 +1,99 @@
+
+ <!DOCTYPE html>
+<html>
+    <head>
+        
+        <title>Candle manager</title>
+        
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <meta name="description" content="Candle manager allows you to easily upload code to Arduino devices">
+        <meta name="author" content="CreateCandle">
+        
+        <link rel="stylesheet" href="stylesheet.css" type="text/css">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/wizard.css') }}">
+    </head>
+    <body>
+
+        <div id="container">
+    
+            <div id="centered">
+            
+            
+                <div id="logo-container">
+                    <img id="logo" src="{{ url_for('static', filename='images/candle_logo_simple.png') }}" />
+                </div>
+            
+                <div id="wizard-container">
+                    <ol class="wizard numeric">
+                        <li class="done">
+                            <span> 1 </span>
+                            <div>Plug in USB</div>
+                        </li>
+                        <li class="active">
+                            <span> 2 </span>
+                            <div>Select type</div>
+                        </li>
+                        <li>
+                            <span> 3 </span>
+                            <div>Change settings</div>
+                        </li>
+                        <li>
+                            <span> 4 </span>
+                            <div>Upload to Arduino</div>
+                        </li>
+                        <li>
+                            <span> 5 </span>
+                            <div>Check</div>
+                        </li>
+                        <li>
+                            <span> 5 </span>
+                            <div>Done</div>
+                        </li>
+                    </ol>
+                </div>
+                
+                <div id="content">
+                
+                    <div id="step1" class="active">
+                        <h2>Plug in USB</h2>
+                    
+                    </div>
+                    <div id="step2">
+                        <h2>Select type</h2>
+                    
+                    </div>
+                    <div id="step3">
+                        <h2>Change settings</h2>
+                    
+                    </div>
+                    <div id="step4">
+                        <h2>Upload to Arduino</h2>
+                    
+                    </div>
+                    <div id="step5">
+                        <h2>Check</h2>
+                    
+                    </div>
+                    <div id="step6">
+                        <h2>Done</h2>
+                    
+                    </div>
+                
+                </div>
+                
+            
+            </div>
+            
+            
+            
+        </div>
+        
+        <script src="{{ url_for('static', filename='js/jquery.min.js') }}" type="text/javascript"></script>
+        <script src="{{ url_for('static', filename='js/wizard.js') }}" type="text/javascript"></script>
+        <script src="{{ url_for('static', filename='js/main.js') }}" type="text/javascript"></script>
+        
+    </body>
+</html>
+
