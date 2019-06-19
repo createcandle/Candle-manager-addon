@@ -12,14 +12,14 @@
     "mysensors",
     "arduino"
   ],
-  "homepage": "https://github.com/createcandle/Webthings-mysensors-adapter",
+  "homepage": "https://github.com/createcandle/Candle-manager-addon",
   "license": "MPL-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/createcandle/Webthings-mysensors-adapter.git"
+    "url": "https://github.com/createcandle/Candle-manager-addon.git"
   },
   "bugs": {
-    "url": "https://github.com/createcandle/Webthings-mysensors-adapter/issues"
+    "url": "https://github.com/createcandle/Candle-manager-addon/issues"
   },
   "files": [
     "LICENSE",
