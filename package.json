@@ -38,10 +38,8 @@
     "pkg/static/js/wizard.jquery.js",
     "pkg/static/images/candle_logo_simple.png",
     "pkg/templates/index.html",
-    "images/detach.png",
-    "images/plug-it-in.png",
-    "code/Candle_cleaner/Candle_cleaner.ino",
-    "source/"
+    "source/Candle_cleaner/Candle_cleaner.ino",
+    "code/Candle_cleaner/Candle_cleaner.ino"
   ],
   "moziot": {
     "api": {
