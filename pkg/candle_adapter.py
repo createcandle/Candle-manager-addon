@@ -94,7 +94,7 @@ class CandleAdapter(Adapter):
                     'candle-adapter-persistence.json'
                 )
         
-        self.add_on_path = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'addons','Candle-manager')
+        self.add_on_path = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'addons','Candle-manager-addon')
         print("self.add_on_path = " + str(self.add_on_path))
         
         self.DEBUG = False
@@ -155,19 +155,24 @@ class CandleAdapter(Adapter):
         print("CHECKING ALREADY INSTALLED LIBRARIES")
         self.required_libraries = []
         self.installed_libraries = []
-        command = self.add_on_path + '/arduino-cli lib list --all --format=json'
-        installed_libraries_response = json.loads(run_command_json(command))
+        try:
+            #command = self.add_on_path + '/arduino-cli lib list --all --format=json' # perhaps use os.path.join(self.add_on_path, 'arduino-cli') + 'lib list --all --format=json' ?
+            command = os.path.join(self.add_on_path, 'arduino-cli') + ' lib list --all --format=json'
+            installed_libraries_response = json.loads(run_command_json(command))
 
-        for lib_object in installed_libraries_response['libraries']:
-            print(lib_object['library']['Properties']['name'])
-            self.installed_libraries.append(lib_object['library']['Properties']['name'])
-            
+            for lib_object in installed_libraries_response['libraries']:
+                print(lib_object['library']['Properties']['name'])
+                self.installed_libraries.append(lib_object['library']['Properties']['name'])
+        except:
+            print("failed to check libraries")
             
         # Pre-compile the cleaner code
         self.cleaner_pre_compiled = False
         try:
-            cleaner_hex_path = self.add_on_path + "/code/Candle_cleaner/Candle_cleaner.arduino.avr." + self.arduino_type + ".hex"
-            print(cleaner_hex_path)
+            hex_filename = "Candle_cleaner.arduino.avr." + self.arduino_type + ".hex"
+            #cleaner_hex_path = self.add_on_path + "/code/Candle_cleaner/Candle_cleaner.arduino.avr." + self.arduino_type + ".hex"
+            cleaner_hex_path = os.path.join(self.add_on_path, 'code','Candle_cleaner',hex_filename)
+            print("cleaner_hex_path = " + str(cleaner_hex_path))
             if os.path.isfile(cleaner_hex_path):
                 print("HEX file already existed, so no need to pre-compile the Candle Cleaner")
                 self.cleaner_pre_compiled = True
@@ -212,6 +217,7 @@ class CandleAdapter(Adapter):
         #    log.setLevel(logging.ERROR)
         
         app = Flask(__name__)
+        app = Flask(__name__, root_path= os.path.join(self.add_on_path, 'pkg') )
         
         @app.route('/') # The home page
         def index():
@@ -334,7 +340,12 @@ class CandleAdapter(Adapter):
                                          endpoint, filename)
                     values['q'] = int(os.stat(file_path).st_mtime)
             return url_for(endpoint, **values)
-            
+        
+        #template_folder = os.path.join(self.add_on_path, 'pkg', 'templates')
+        #static_folder = os.path.join(self.add_on_path, 'pkg', 'static')
+        
+        
+        #app.run(host="0.0.0.0", port=self.port, use_reloader=False, template_folder=template_folder, static_folder=static_folder)
         app.run(host="0.0.0.0", port=self.port, use_reloader=False)
         #threading.Thread(target=app.run).start()
 
@@ -613,7 +624,7 @@ class CandleAdapter(Adapter):
                         
                         try:
                             # A TOGGLE DEFINE
-                            pattern = '^(\/\/)?\s?#define\s\w+\s*\/?\/?\s?(.*)' #define DOOR1_SELF_LOCKING                          // Self locking? Should door number one automatically re-lock itself after a short amount of time?
+                            pattern = '^(\/\/)?\s?#define\s\w+\s*\/?\/?\s?(.*)' #define DOOR1_SELF_LOCKING                          #Self locking? Should door number one automatically re-lock itself after a short amount of time?
                             matched = re.match(pattern, line)
                             if matched:
                                 #print("toggle define match line:" + line)
