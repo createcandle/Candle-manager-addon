@@ -102,6 +102,7 @@ function generate_sources_list(){
         $("#sources-list > li").click(function(){
             //returnValue = ;
             console.log("clicked on " + $(this).text() );
+            $('#settings_device_name').text( $(this).text() )
             source_id = $(this).data('source-id');
             generate_settings_page(source_id);
             

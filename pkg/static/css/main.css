@@ -131,6 +131,10 @@ form p{
     color:#3b99fc;
 }
 
+#settings_device_name{
+    font-style: italic;
+}
+
 #settings-explanation-container{
     min-width:300px;
 }

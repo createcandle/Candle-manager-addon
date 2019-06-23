@@ -100,6 +100,7 @@ class CandleAdapter(Adapter):
         self.DEBUG = False
         self.DEVELOPMENT = True
         
+        self.port = 8686
         self.json_sketches_url = ""
         self.simple_password = ""
         self.arduino_type = "nano"
@@ -108,51 +109,72 @@ class CandleAdapter(Adapter):
         self.add_from_config()
         
         
-        
+        # Create the Candle thing
+        try:
+            device = CandleDevice(self)
+            self.handle_device_added(device)
+        except:
+            print("Error: unable to create the 'Create Candle' thing. You can try to manually open this URL in your browser: http://gateway.local:" + str(self.port))
+        print(">>>>>>>>>>")
+        try:
+            #self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
+            self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
+            print(str(self.create_candle_device))
+            if str(self.create_candle_device) != 'None':
+                self.create_candle_device.connected_notify(False)
+                if self.DEBUG:
+                    print("-Set Create Candle thing status set to 'not connected'.")
+            else:
+                print("Warning: Create Candle thing does not exist.")
+        except:
+            print("Warning: unable to set the Create Candle thing status to 'not connected'.")
+
         
         # Scan sources directory
         self.sources = []
         #self.cwd = str(os.getcwd())
         try:
             self.scan_source_dir()
-        except:
-            print("Failed to scan sources")
-        
-        
+        except Exception as e:
+            print("Failed to scan sources directory: " + str(e))
         
         
         # Download/update sketches
-        print("self.json_sketches_url = " + str(self.json_sketches_url))
-        if self.json_sketches_url.startswith("http") and self.json_sketches_url.endswith(".json"):
-            try:
-                response = requests.get(self.json_sketches_url, allow_redirects=True) # was True
-                
-                #print("response.status_code = " + str(response.status_code))
-                #print("response.encoding = " + str(response.encoding))
-                #print("Got response")
-                #print("response: " + str(response))
-                json_sketches_data = json.loads(response.content.decode('utf-8'))
-                if self.DEBUG:
-                    print(str(json_sketches_data["sketch_urls"]))
-                for sketch_url in json_sketches_data["sketch_urls"]:
-                    self.download_source(sketch_url)
-            except Exception as e:
-                print("Failed to download sketches from JSON file: " + str(e))
-                
-        elif self.json_sketches_url.startswith("http") and self.json_sketches_url.endswith(".ino"):
-            self.download_source(self.json_sketches_url)
-        
+        try:
+            print("self.json_sketches_url = " + str(self.json_sketches_url))
+            if self.json_sketches_url.startswith("http") and self.json_sketches_url.endswith(".json"):
+
+                    response = requests.get(self.json_sketches_url, allow_redirects=True) # was True
+
+                    #print("response.status_code = " + str(response.status_code))
+                    #print("response.encoding = " + str(response.encoding))
+                    #print("Got response")
+                    #print("response: " + str(response))
+                    json_sketches_data = json.loads(response.content.decode('utf-8'))
+                    if self.DEBUG:
+                        print(str(json_sketches_data["sketch_urls"]))
+                    for sketch_url in json_sketches_data["sketch_urls"]:
+                        self.download_source(sketch_url)
+
+
+            elif self.json_sketches_url.startswith("http") and self.json_sketches_url.endswith(".ino"):
+                self.download_source(self.json_sketches_url)
+        except Exception as e:
+            print("Failed to download sketches from JSON file: " + str(e))
 
 
         # Update the Arduino CLI:
-        if self.update_arduino_cli():
-            print("Succesfully updated Arduino CLI index and AVR")
-        else:
-            print("Error: failed to update Arduino CLI")
-            
+        try:
+            if self.update_arduino_cli():
+                print("Succesfully updated Arduino CLI index and AVR")
+            else:
+                print("Warning: could not check for updates for the Arduino CLI (no internet connection?)")
+        except Exception as e:
+            print("Failed to download sketches from JSON file: " + str(e))
+
             
         # Get JSON list of already installer Arduino libraries
-        print("CHECKING ALREADY INSTALLED LIBRARIES")
+        print("Looking for already installed libraries")
         self.required_libraries = []
         self.installed_libraries = []
         try:
@@ -161,17 +183,17 @@ class CandleAdapter(Adapter):
             installed_libraries_response = json.loads(run_command_json(command))
 
             for lib_object in installed_libraries_response['libraries']:
-                print(lib_object['library']['Properties']['name'])
-                self.installed_libraries.append(lib_object['library']['Properties']['name'])
+                print("Found library: " + str(lib_object['library']['Properties']['name']))
+                self.installed_libraries.append(str(lib_object['library']['Properties']['name']))
         except:
             print("failed to check libraries")
             
         # Pre-compile the cleaner code
         self.cleaner_pre_compiled = False
         try:
-            hex_filename = "Candle_cleaner.arduino.avr." + self.arduino_type + ".hex"
+            hex_filename = "Candle_cleaner.arduino.avr." + str(self.arduino_type) + ".hex"
             #cleaner_hex_path = self.add_on_path + "/code/Candle_cleaner/Candle_cleaner.arduino.avr." + self.arduino_type + ".hex"
-            cleaner_hex_path = os.path.join(self.add_on_path, 'code','Candle_cleaner',hex_filename)
+            cleaner_hex_path = os.path.join(self.add_on_path,'code','Candle_cleaner',hex_filename)
             print("cleaner_hex_path = " + str(cleaner_hex_path))
             if os.path.isfile(cleaner_hex_path):
                 print("HEX file already existed, so no need to pre-compile the Candle Cleaner")
@@ -188,167 +210,169 @@ class CandleAdapter(Adapter):
             else:
                 print("Candle Cleaner was missing from the source directory")
         except Exception as e:
-            print("Failed to pre-compile test code: " + str(e))
-
-
+            print("Failed to pre-compile Candle Cleaner code (which is uses during testing): " + str(e))
 
         # USB scanning variables
         self.previous_serial_devices = []
         self.last_added_serial_port = ""
         self.scan_usb_ports()
-
-        # Create the Candle thing
-        device = CandleDevice(self)
-        self.handle_device_added(device)
-
-
+        self.last_added_serial_port = "" # Making sure we don't start with any device selected as the device to upload to.
+        
         # Arduino CLI
         self.upload_status = "Preparing"
         self.bootloader = ":cpu=atmega328"
         
+        # Now we can set the thing to connected, since Flask will launch pretty quickly.
+        try:
+            self.create_candle_device.connected_notify(True)
+            print("Set the Create Candle device to 'connected' state." + str(self.create_candle_device))
+        except:
+            print("Warning, could not set the Create Candle thing to 'connected' state.")
         
-        # Flask webserver
-        self.port = 8686
-        print(str(__name__))
-        
-        # Disable outputting to console
-        #if not self.DEBUG:
-        #    log = logging.getLogger('werkzeug')
-        #    log.setLevel(logging.ERROR)
-        
-        app = Flask(__name__)
-        app = Flask(__name__, root_path= os.path.join(self.add_on_path, 'pkg') )
-        
-        @app.route('/') # The home page
-        def index():
-            return render_template('index.html')
-            
-        @app.route('/source') # Returns a list of all available source code in the source folder
-        def app_scan_source_dir():
-            d = self.scan_source_dir()
-            return jsonify(d)   
-            
-        @app.route('/scanUSB') # Returns newly plugged in USB serial devices
-        def app_scanUSB():
-            return jsonify( self.scan_usb_ports() )  
-            
-        @app.route('/extract/<source_id>') # Returns a list of all available source code in the source folder
-        def app_extract_settings(source_id):
+        try:
+            # Flask webserver
             if self.DEBUG:
-                print("source ID to extract: " + str(source_id))
-            d = self.change_settings(source_id, False, None) # False here indicates it should only scan for variables.
-            return jsonify(d) 
-            
-        @app.route('/generate_code/<source_id>', methods=['POST']) # Generates source code from the new settings
-        def app_generate_code(source_id):
-            
-            data = request.get_json()
-            if self.DEBUG:
-                print("received new settings json:" + str(data))
-            
-            d = self.change_settings(source_id, True, data)
-            return jsonify(d)
-            
-        @app.route('/check_libraries/<source_id>') # Check if all required libraries are installed
-        def app_check_libraries(source_id):
-            d = self.check_libraries(source_id)
-            return jsonify(d)
-            
-        @app.route('/compile/<source_id>') # Compile the code
-        def app_compile(source_id):
-            d = self.compile(source_id)
-            return jsonify(d)
-            
-        @app.route('/test_upload/<source_id>') # Do a test upload, and see if the correct bootloader is set.
-        def app_test_upload(source_id): # It doesn't actually use the source_id.
-            
-            d = self.test_upload(source_id)
-            return jsonify(d)
-        
-        
-        @app.route('/upload/<source_id>') # Returns a list of all available source code in the source folder
-        def app_upload(source_id):
-            
-            d = self.upload(source_id, self.bootloader)
-            return jsonify(d)
-            
-            
-        @app.route('/serial-output')
-        def app_serial_output():
-            
-            try:
-                self.open_serial_port.close()
-            except:
-                pass
-            
-            def inner2():
-                if self.last_added_serial_port == "":
-                    yield "No serial port found"
-                try:
-                    if self.DEBUG:
-                        print("Opening serial port")
-                    self.open_serial_port = serial.Serial(self.last_added_serial_port, 115200, timeout=1)
-                    self.open_serial_port.flushInput()
-                except:
-                    print("Could not open serial port")
-            
-                countdown_counter = 60
-                while countdown_counter > 0:
-                    if self.DEBUG:
-                        print("countdown_counter = " + str(countdown_counter))
-                    try:
-                        ser_bytes = self.open_serial_port.readline()
-                        decoded_bytes = ser_bytes.decode("utf-8") # float(ser_bytes[0:len(ser_bytes)-2].decode("utf-8"))
-                        if len(decoded_bytes) > 0:
-                            decoded_bytes += "<br/>"
-                        if self.DEBUG:
-                            print(str(decoded_bytes))
-                        yield decoded_bytes
-                        
-                    except:
-                        print("Could not read from the serial port")
-                        break
-                    
-                    countdown_counter -= 1
-                    sleep(.1)
-                    
-                print("Closing serial port")
-                self.open_serial_port.close()
-                
-            return Response(inner2(), mimetype='text/html')  # text/html is required for most browsers to show th$
-            
-        
-        @app.route('/stop_listening') # If it's still open, close the serial port.
-        def app_stop_listening():
-            try:
-                self.open_serial_port.close()
-            except:
-                pass
-            return '{"success":True}'
-            
-            
-        # Used to aid development
-        @app.context_processor
-        def override_url_for():
-            return dict(url_for=dated_url_for)
-            
-        def dated_url_for(endpoint, **values):
-            if endpoint == 'static':
-                filename = values.get('filename', None)
-                if filename:
-                    file_path = os.path.join(app.root_path,
-                                         endpoint, filename)
-                    values['q'] = int(os.stat(file_path).st_mtime)
-            return url_for(endpoint, **values)
-        
-        #template_folder = os.path.join(self.add_on_path, 'pkg', 'templates')
-        #static_folder = os.path.join(self.add_on_path, 'pkg', 'static')
-        
-        
-        #app.run(host="0.0.0.0", port=self.port, use_reloader=False, template_folder=template_folder, static_folder=static_folder)
-        app.run(host="0.0.0.0", port=self.port, use_reloader=False)
-        #threading.Thread(target=app.run).start()
+                print("Preparing a Flask webserver called " + str(__name__))
 
+            # Disable outputting to console
+            #if not self.DEBUG:
+            #    log = logging.getLogger('werkzeug')
+            #    log.setLevel(logging.ERROR)
+
+            app = Flask(__name__, root_path= os.path.join(self.add_on_path, 'pkg') )
+
+            @app.route('/') # The home page
+            def index():
+                return render_template('index.html')
+
+            @app.route('/source') # Returns a list of all available source code in the source folder
+            def app_scan_source_dir():
+                d = self.scan_source_dir()
+                return jsonify(d)   
+
+            @app.route('/scanUSB') # Returns newly plugged in USB serial devices
+            def app_scanUSB():
+                return jsonify( self.scan_usb_ports() )  
+
+            @app.route('/extract/<source_id>') # Returns a list of all available source code in the source folder
+            def app_extract_settings(source_id):
+                if self.DEBUG:
+                    print("source ID to extract: " + str(source_id))
+                d = self.change_settings(source_id, False, None) # False here indicates it should only scan for variables.
+                return jsonify(d) 
+
+            @app.route('/generate_code/<source_id>', methods=['POST']) # Generates source code from the new settings
+            def app_generate_code(source_id):
+
+                data = request.get_json()
+                if self.DEBUG:
+                    print("received new settings json:" + str(data))
+
+                d = self.change_settings(source_id, True, data)
+                return jsonify(d)
+
+            @app.route('/check_libraries/<source_id>') # Check if all required libraries are installed
+            def app_check_libraries(source_id):
+                d = self.check_libraries(source_id)
+                return jsonify(d)
+
+            @app.route('/compile/<source_id>') # Compile the code
+            def app_compile(source_id):
+                d = self.compile(source_id)
+                return jsonify(d)
+
+            @app.route('/test_upload/<source_id>') # Do a test upload, and see if the correct bootloader is set.
+            def app_test_upload(source_id): # It doesn't actually use the source_id.
+
+                d = self.test_upload(source_id)
+                return jsonify(d)
+
+
+            @app.route('/upload/<source_id>') # Returns a list of all available source code in the source folder
+            def app_upload(source_id):
+
+                d = self.upload(source_id, self.bootloader)
+                return jsonify(d)
+
+
+            @app.route('/serial-output')
+            def app_serial_output():
+
+                try:
+                    self.open_serial_port.close()
+                except:
+                    pass
+
+                def inner2():
+                    if self.last_added_serial_port == "":
+                        yield "No serial port found"
+                    try:
+                        if self.DEBUG:
+                            print("Opening serial port")
+                        self.open_serial_port = serial.Serial(self.last_added_serial_port, 115200, timeout=1)
+                        self.open_serial_port.flushInput()
+                    except:
+                        print("Could not open serial port")
+
+                    countdown_counter = 60
+                    while countdown_counter > 0:
+                        if self.DEBUG:
+                            print("countdown_counter = " + str(countdown_counter))
+                        try:
+                            ser_bytes = self.open_serial_port.readline()
+                            decoded_bytes = ser_bytes.decode("utf-8") # float(ser_bytes[0:len(ser_bytes)-2].decode("utf-8"))
+                            if len(decoded_bytes) > 0:
+                                decoded_bytes += "<br/>"
+                            if self.DEBUG:
+                                print(str(decoded_bytes))
+                            yield decoded_bytes
+
+                        except:
+                            print("Could not read from the serial port")
+                            break
+
+                        countdown_counter -= 1
+                        sleep(.1)
+
+                    print("Closing serial port")
+                    self.open_serial_port.close()
+
+                return Response(inner2(), mimetype='text/html')  # text/html is required for most browsers to show th$
+
+
+            @app.route('/stop_listening') # If it's still open, close the serial port.
+            def app_stop_listening():
+                try:
+                    self.open_serial_port.close()
+                except:
+                    pass
+                return '{"success":True}'
+
+
+            # Used to aid development
+            @app.context_processor
+            def override_url_for():
+                return dict(url_for=dated_url_for)
+
+            def dated_url_for(endpoint, **values):
+                if endpoint == 'static':
+                    filename = values.get('filename', None)
+                    if filename:
+                        file_path = os.path.join(app.root_path,
+                                             endpoint, filename)
+                        values['q'] = int(os.stat(file_path).st_mtime)
+                return url_for(endpoint, **values)
+
+            #template_folder = os.path.join(self.add_on_path, 'pkg', 'templates')
+            #static_folder = os.path.join(self.add_on_path, 'pkg', 'static')
+
+
+            #app.run(host="0.0.0.0", port=self.port, use_reloader=False, template_folder=template_folder, static_folder=static_folder)
+            app.run(host="0.0.0.0", port=self.port, use_reloader=False)
+            #threading.Thread(target=app.run).start()
+        except Exception as e:
+            print("Flask error: " + str(e))
+        
 
     def update_arduino_cli(self):
         success = False
@@ -445,27 +469,31 @@ class CandleAdapter(Adapter):
         current_serial_devices = []
         result = {"state":"stable"}
         
+        try:    
+            ports = prtlst.comports()
+            for port in ports:
+                if 'USB' in port[1]: #check 'USB' string in device description
+                    #if self.DEBUG:
+                    #    print("port: " + str(port[0]))
+                    #    print("usb device description: " + str(port[1]))
+                    if str(port[0]) not in current_serial_devices:
+                        current_serial_devices.append(str(port[0]))
+                        if str(port[0]) not in self.previous_serial_devices:
+                            self.last_added_serial_port = str(port[0])
+                            #if self.DEVELOPMENT:
+                            #    self.last_added_serial_port = '/dev/ttyUSB1' # Overrides the port to use during development of this add-on.
+                            print("New USB device added: " + self.last_added_serial_port)
+                            result["state"] = "added"
+
+            #print("Current USB devices: " + str(current_serial_devices))
+
+            if len(self.previous_serial_devices) > len(current_serial_devices):
+                print("A USB device was removed")
+                result["state"] = "removed"
+        
+        except Exception as e:
+            print("Error getting serial ports list: " + str(e))
             
-        ports = prtlst.comports()
-        for port in ports:
-            if 'USB' in port[1]: #check 'USB' string in device description
-                #if self.DEBUG:
-                #    print("port: " + str(port[0]))
-                #    print("usb device description: " + str(port[1]))
-                if str(port[0]) not in current_serial_devices:
-                    current_serial_devices.append(str(port[0]))
-                    if str(port[0]) not in self.previous_serial_devices:
-                        self.last_added_serial_port = str(port[0])
-                        #if self.DEVELOPMENT:
-                        #    self.last_added_serial_port = '/dev/ttyUSB1' # Overrides the port to use during development of this add-on.
-                        print("New USB device added: " + self.last_added_serial_port)
-                        result["state"] = "added"
-        
-        #print("Current USB devices: " + str(current_serial_devices))
-        
-        if len(self.previous_serial_devices) > len(current_serial_devices):
-            print("A USB device was removed")
-            result["state"] = "removed"
             
         self.previous_serial_devices = current_serial_devices
         
@@ -476,14 +504,18 @@ class CandleAdapter(Adapter):
     def scan_source_dir(self):
         print("Scanning source file directory")
         
-        print(self.add_on_path)
-        file_list = []
-        for dentry in os.scandir(self.add_on_path + "/source"):
-            if not dentry.name.startswith('.') and dentry.is_dir():
-                file_list.append(dentry.name)
-        self.sources = file_list
-        return file_list
-
+        try:
+            if self.DEBUG:
+                print("Scanning " + str(self.add_on_path) + "/source")
+            file_list = []
+            for dentry in os.scandir(self.add_on_path + "/source"):
+                if not dentry.name.startswith('.') and dentry.is_dir():
+                    file_list.append(dentry.name)
+            self.sources = file_list
+            return file_list
+        
+        except Exception as e:
+            print("Error scanning source directory: " + str(e))
 
 
     # This function is dual use. if generate_new_code is set to False it will scan arduino code and extract the settings. if generate_new_code is set to True is will create new arduino code with updated settings that it received from the clientside.
@@ -514,16 +546,19 @@ class CandleAdapter(Adapter):
             
             # This part deals with the header text
             if state == 0:
-                new_code += str(line) #+ "\n" # if generate_new_code is set to true, this will create the code with the updated settings.
-                if "* SETTINGS */" not in line:
-                    if line.find('*') > -1 and line.find('*') < 3: # Remove the * that precedes lines in the comment
-                        line = re.sub(r'.*\*', '', line)
-                        explanation += str(line) #+ "\n"
-                else:
-                    state = 1
-                    print("Done with explanation")
-                    result["explanation"] = explanation
-                    continue
+                try:
+                    new_code += str(line) #+ "\n" # if generate_new_code is set to true, this will create the code with the updated settings.
+                    if "* SETTINGS */" not in line:
+                        if line.find('*') > -1 and line.find('*') < 3: # Remove the * that precedes lines in the comment
+                            line = re.sub(r'.*\*', '', line)
+                            explanation += str(line) #+ "\n"
+                    else:
+                        state = 1
+                        print("Done with explanation")
+                        result["explanation"] = explanation
+                        continue
+                except Exception as e:
+                    print("Error extracting header text: " + str(e))
                     
             # This part deals with the part of the Arduino code that contains the settings
             if state == 1:
@@ -542,9 +577,10 @@ class CandleAdapter(Adapter):
                                 pattern = '^#define\s\w+SIMPLE_PASSWD\s\"([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"'
                                 matched = re.match(pattern, line)
                                 if matched and matched.group(1) != None:
-                                        
+                                    if self.simple_password == "":
+                                        continue # If the password has been set to "", then the user doesn't want security. Skip adding the security line to the code.
                                     line = line.replace(str(matched.group(1)),self.simple_password, 1)
-                                    print("updated line:" + str(line))
+                                    print("updated security line:" + str(line))
                                     new_code += str(line) #+ "\n"
                                     continue
                             except:
@@ -559,29 +595,24 @@ class CandleAdapter(Adapter):
                         
                         try:
                             # NORMAL VARIABLE
-                            pattern = '\w+\s\w+\[?[0-9]*?\]?\s?\=\s?\"?([\w\+\!\@\#\$\%\ˆ\&\*\(\)\.\,\-]*)\"?\;\s*\/?\/?\s?(.*)'
+                            pattern = '\w+\s\w+\[?[0-9]*?\]?\s?\=\s?\"?([\w\+\!\@\#\$\%\ˆ\&\*\(\)\.\,\-]*)\"?\;\s*\/?\/?\s?([\w\"\_\-\+\s]*[\.\s|\?\s])(.*)'
                             matched = re.match(pattern, line)
                             #print("matched?:" + str(matched))
                             if matched:
                                 if matched.group(2) != None:
-                                    sentences = split_sentences(matched.group(2))
-                                    title = sentences[0]
-                                    sentences.pop(0)
-                                    
-                                    try:
-                                        comment = ''.join(sentences) #str(matched.group(2).split('.', 1)[1])
-                                    except:
-                                        pass
+                                    title = str(matched.group(2))
                                 else:
-                                    continue # if a setting does not have a comment it cannot be used.
-                                    
+                                    continue # if a setting does not at the very least have a title it cannot be used.
+                                if matched.group(3) != None:
+                                    comment = str(matched.group(3))
+
                                 if generate_new_code and settings_counter < len(new_values_list):
                                     line = line.replace(str(matched.group(1)), str(new_values_list[settings_counter]), 1)
                                     print("updated line:" + str(line))
                                     new_code += str(line) #+ "\n"
                                     
                                 else:
-                                    settings.append({"type":"text" ,"value":matched.group(1), "title":title ,"comment":comment}) # moet nog een ID nummer in ofzo, anders krijg je dubbele
+                                    settings.append({"type":"text" ,"value":str(matched.group(1)), "title":title ,"comment":comment})
                                 
                                 
                                 settings_counter += 1 # This is used to keep track of the ID of the settings line we are modifying.
@@ -593,27 +624,22 @@ class CandleAdapter(Adapter):
                             
                         try:
                             # COMPLEX DEFINE WITH A STRING VALUE INSIDE ""
-                            pattern = '^#define\s\w+\s\"?([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"?\s*\/?\/?\s?(.*)'
+                            pattern = '^#define\s\w+\s\"?([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"?\s*\/?\/?\s?([\w\"\_\-\+\s]*[\.\s|\?\s])(.*)'
                             matched = re.match(pattern, line)
                             if matched:
                                 if matched.group(2) != None:
-                                    sentences = split_sentences(matched.group(2))
-                                    title = sentences[0]
-                                    sentences.pop(0)
-                                    
-                                    try:
-                                        comment = ''.join(sentences) #str(matched.group(2).split('.', 1)[1])
-                                    except:
-                                        pass
+                                    title = str(matched.group(2))
                                 else:
-                                    continue # if a setting does not have a comment it cannot be used.
+                                    continue # if a setting does not at the very least have a title it cannot be used.
+                                if matched.group(3) != None:
+                                    comment = str(matched.group(3))
                                     
                                 if generate_new_code and settings_counter < len(new_values_list):
                                     line = line.replace(str(matched.group(1)),str(new_values_list[settings_counter]), 1)
                                     print("updated line:" + str(line))
                                     new_code += str(line) #+ "\n"
                                     
-                                settings.append({"type":"text" ,"value":matched.group(1), "title":title ,"comment":comment})
+                                settings.append({"type":"text" ,"value":str(matched.group(1)), "title":title ,"comment":comment})
                                 
                                 settings_counter += 1
                                 continue
@@ -624,7 +650,7 @@ class CandleAdapter(Adapter):
                         
                         try:
                             # A TOGGLE DEFINE
-                            pattern = '^(\/\/)?\s?#define\s\w+\s*\/?\/?\s?(.*)' #define DOOR1_SELF_LOCKING                          #Self locking? Should door number one automatically re-lock itself after a short amount of time?
+                            pattern = '^(\/\/)?\s?#define\s\w+\s*\/?\/?\s?([\w\"\_\-\+\s]*[\.\s|\?\s])(.*)'
                             matched = re.match(pattern, line)
                             if matched:
                                 #print("toggle define match line:" + line)
@@ -632,45 +658,32 @@ class CandleAdapter(Adapter):
                                 #print("- comment = " + str(matched.group(2)))
                                 #print("checkbox matched.group(1) = " + str(matched.group(1)))
                                 toggle_state = 0 if str(matched.group(1)) == "//" else 1
-                                '''
+    
                                 if matched.group(2) != None:
-                                    title = str(matched.group(2).split('.', 1)[0])
-                                    #if len(matched.group(2).split('.', 1)) > 1:
-                                    try:
-                                        comment = str(matched.group(2).split('.', 1)[1])
-                                    except:
-                                        pass
-                                '''
-                                if matched.group(2) != None:
-                                    sentences = split_sentences(matched.group(2))
-                                    title = sentences[0]
-                                    sentences.pop(0)
-                                    
-                                    try:
-                                        comment = ''.join(sentences) #str(matched.group(2).split('.', 1)[1])
-                                    except:
-                                        pass
+                                    title = str(matched.group(2))
                                 else:
-                                    continue # if a setting does not have a comment it cannot be used.
-                                    
+                                    continue # if a setting does not at the very least have a title it cannot be used.
+                                if matched.group(3) != None:
+                                    comment = str(matched.group(3))
                                 
                                 if generate_new_code and settings_counter < len(new_values_list):
                                     #print("MODIFYING TOGGLE")
                                     #print("new_values_list[settings_counter] = " + str(new_values_list[settings_counter]))
                                     #print(line)
                                     if toggle_state == 1 and new_values_list[settings_counter] == 0:
-                                        #print("should be off, so should add //")
+                                        if self.DEBUG:
+                                            print("should be off, so should add //")
                                         line = "//" + line
                                         
                                     if toggle_state == 0 and new_values_list[settings_counter] == 1:
-                                        #print("should be on, so removing //")
+                                        if self.DEBUG:
+                                            print("should be on, so removing //")
                                         line = re.sub("^\s?\/\/", "", line) # remove // from beginning of the line
                                         
                                     print("updated line:" + str(line))
                                     new_code += str(line) #+ "\n"
                                     
                                 settings.append({"type":"checkbox" ,"value":toggle_state, "title":title ,"comment":comment})
-                                #settings.append({"checkbox":toggle_state,"comment":comment})
                                 
                                 settings_counter += 1
                                 continue
@@ -724,7 +737,7 @@ class CandleAdapter(Adapter):
                                 print("->Not installed yet")
                                 self.required_libraries.append(str(library_name))
                             else:
-                                print("-library already installed, skipping.")
+                                print("-Library is already installed, skipping.")
                         else:
                             print("Library name was empty")
                 except:
@@ -921,29 +934,40 @@ class CandleAdapter(Adapter):
 
     def add_from_config(self):
         """Attempt to add all configured devices."""
-        database = Database('Candle-manager')
-        if not database.open():
-            return
+        try:
+            database = Database('Candle-manager')
+            if not database.open():
+                return
 
-        config = database.load_config()
-        database.close()
+            config = database.load_config()
+            database.close()
 
-        if not config:
-            return
-        
-        if 'Sketches' in config:
-            self.json_sketches_url = config['Sketches']
-        
-        if 'Password' in config:
-            self.simple_password = config['Password']
-        
-        if 'Arduino type' in config:
-            if config['Arduino type'] == "Arduino Nano":
-                self.arduino_type == "nano"
-            if config['Arduino type'] == "Arduino Uno":
-                self.arduino_type == "uno"
-            if config['Arduino type'] == "Arduino Mega":
-                self.arduino_type == "mega"
+            if not config:
+                print("Error: no settings found for Candle Manager.")
+                return
+
+            print("Loading settings for Candle manager")
+
+            if 'Sketches' in config:
+                self.json_sketches_url = str(config['Sketches'])
+                print("-Sketch URL found in settings")
+            else:
+                print("-No Arduino sketch(es) URL found in the code.")
+
+            if 'Password' in config:
+                self.simple_password = str(config['Password'])
+                print("-Password found in settings")
+
+            if 'Arduino type' in config:
+                if str(config['Arduino type']) == "Arduino Nano":
+                    self.arduino_type == "nano"
+                if str(config['Arduino type']) == "Arduino Uno":
+                    self.arduino_type == "uno"
+                if str(config['Arduino type']) == "Arduino Mega":
+                    self.arduino_type == "mega"
+                print("Arduino type found in settings")
+        except:
+            print("Error loading configuration")
 
 
 
@@ -964,7 +988,7 @@ class CandleDevice(Device):
 
         adapter -- the Adapter managing this device
         """
-        self.name = 'Create Candle'
+
         
         '''
         self.events = [
@@ -988,6 +1012,7 @@ class CandleDevice(Device):
         
         self.adapter = adapter
 
+        self.name = 'Create Candle'
         self.description = 'Create Candle'
 
 
