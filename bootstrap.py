@@ -47,7 +47,7 @@ except:
 
 try:
     import flask  # noqa: F401
-    import pyserial
+    import serial
 except ImportError:
     # If installation failed, exit with 100 to tell the gateway not to restart
     # this process.

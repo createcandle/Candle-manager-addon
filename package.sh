@@ -10,7 +10,13 @@ rm -f SHA256SUMS
 
 # Put package together
 mkdir package
-cp -r pkg LICENSE package.json *.py requirements.txt setup.cfg package/
+mkdir package/source
+mkdir package/source/Candle_cleaner
+mkdir package/code
+mkdir package/code/Candle_cleaner
+cp source/Candle_cleaner/Candle_cleaner.ino package/source/Candle_cleaner/Candle_cleaner.ino
+cp source/Candle_cleaner/Candle_cleaner.ino package/code/Candle_cleaner/Candle_cleaner.ino
+cp -r pkg LICENSE arduino-cli boards.txt package.json *.py requirements.txt setup.cfg package/
 find package -type f -name '*.pyc' -delete
 find package -type d -empty -delete
 
