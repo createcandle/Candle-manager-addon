@@ -67,12 +67,15 @@
                     </div>
                     <div id="step2">
                         <h2>Select type</h2>
-                        <p>Which type of device have you just plugged in?</p>
+                        <p>Which type of device have you just plugged in <span class="advanced">at </span><span class="advanced new-port-id"></span>?</p>
                         <div id="sources-container"></div>
-                    
+                        <div class="button-footer">
+                            <button class="advanced" id="skip-to-check">Check serial output</button>
+                            <div></div>
+                        </div>
                     </div>
                     <div id="step3">
-                        <h2>Change settings for <span id="settings_device_name"></span></h2>
+                        <h2>Change settings for <span id="settings_device_name"></span> <span class="advanced">connected at </span><span class="advanced new-port-id"></span></h2>
                         <p>If you want you can change these default settings. You can also learn more about how the device works in the description below. When you are ready to continue please click on the <em>next</em> button.</p>
                         <div class="two columns">
                             
@@ -120,8 +123,11 @@
                     </div>
                     <div id="step5">
                         <h2>Check</h2>
-                        <p>When you connect your device via USB you can listen to what it's thinking. Check these message for any errors. This will be updated for about 60 seconds.</p>
+                        <p>When you connect your device via USB you can listen to what it's thinking. Check these message for any errors.</p>
                         <div id="serial-output-container"></div>
+                        <div id="serial-output-footer">
+                            <span class="advanced">Listening to port:</span> <span class="advanced new-port-id"></span>
+                        </div>
                         <div class="button-footer">
                             <div></div>
                             <button class="next">Next</button>

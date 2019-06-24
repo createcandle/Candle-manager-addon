@@ -1,6 +1,8 @@
 
 var current_step = 1;
 var source_id = -1;
+var new_port_id = "";
+var doing_serial_check = false
 
 $(document).ready(function(){
 	console.log("document ready");
@@ -22,20 +24,30 @@ $(document).ready(function(){
     });
     
     $('#step5 button.next').on('click', function () {
-        $('#serial-output-container').empty();
-        $.get( "/stop_listening");
         $("ol.wizard.numeric").wizard('nextStep');
+        new_port_id = "";   // Reset some variables
+        source_id = -1;     // Reset some variables
         show_step(6);
+        serial_close();
     });
 
+    $('#skip-to-check').on('click', function () {
+        show_step(5);
+        $('#upload-progress').addClass('progress_complete');
+        show_step(5);
+        show_serial_debug();
 
+    });
+    
+    
     $('button.restart').on('click', function () {
         location.reload();
     });
-     
-
+    
     // Ask if a USB device has been plugged in.
-    setTimeout(poll_USB, 1000);
+    init_interface();
+    //setTimeout(poll_USB, 1000);
+    setInterval(poll_USB, 1000);
 });
 
 
@@ -44,6 +56,23 @@ function show_step(step_number){
     current_step = step_number;
     $("#content > div").removeClass("active");
     $("#content > #step" + step_number).addClass("active");
+}
+
+function init_interface(){
+    $.getJSON( "/init_interface", function( data ) {
+        console.log(data);
+        if ( data.advanced == 1 ){
+            $('.advanced').show(); // Show all the advanced interface elements.
+        }
+        /*
+        var items = [];
+        $.each( data, function( key, value ) {
+            //console.log("at item:" + key);
+            items.push( "<li id=source" + key + " data-source-id=" + key + ">" + value + "</li>" );
+        });
+        */
+    });
+
 }
 
 
@@ -55,24 +84,31 @@ function poll_USB(){
             if ( json.state == "stable" ) {
                 console.log("No change in connected USB devices")// No change in the number of attached USB devices.
             }
-            else if ( json.state == "added" ){
-                console.log("New USB device connected")
+            else if ( json.state == "added" && json.new_port_id != undefined ){
+                
+                console.log("New USB device connected at " + json.new_port_id)
                 if(current_step == 1){
+                    console.log("json.new_port_id = " + json.new_port_id);
+                    new_port_id = json.new_port_id;
+                    $('.new-port-id').text(new_port_id);
                     generate_sources_list();
                 }
-                else{
+                //else{
+                //    location.reload();
+                //}
+            }
+            else if ( json.state == "removed" && json.removed_port_ids != undefined){
+                console.log("USB device removed!")
+                if( json.removed_port_ids.indexOf(new_port_id) >= 0) { // If the current port is in the list of removed ports.
+                    console.log("The targeted USB serial device is no longer available");
                     location.reload();
                 }
             }
-            else if ( json.state == "removed" ){
-                console.log("USB device removed!")
-                location.reload();
-                /*$('ul.wizard.numeric li').removeClass("active done");
-                $('ul.wizard.numeric li:first-child').addClass("active");
-                show_step(1);*/
+            else{
+                console.error("Error checking USB status");
             }
         }
-        setTimeout(poll_USB, 1000);
+        //setTimeout(poll_USB, 1000);
     });
 }
 
@@ -133,9 +169,8 @@ function generate_settings_page(source_id){
             $("#settings-explanation-container").hide();
         }
         
-        
+        // Generate Settings HTML
         if( data.settings.length > 0 ){
-            // Generate Settings HTML
             $.each( data.settings, function( key, value ) {
                 console.log("at item:" + key);
                 if( key == 0){autofocus = "autofocus";}else{autofocus = "";}
@@ -279,29 +314,40 @@ function compile(){
 
 function test_upload(){
     console.log("Asking to do a test upload");
-    
-    $.getJSON( "/test_upload/" + source_id, function( data ) {
-        console.log(data);
-        //var items = [];
-        
-        if(data == null || data.message == undefined || data.success == undefined){
-            lost_connection();
-            return;
-        }
-        
-        $("#upload-status").text(data.message);
-        
-        
-        // Generate explanation HTML
-        if( data.success == false ){
-            console.log("ERROR. Something went wrong during the test upload.");
-            $('#test-progress').addClass('progress_failed');
-            show_upload_errors(data.errors)
-        }
-        else{
-            console.log("Test went ok");
-            $('#test-progress').addClass('progress_complete');
-            upload();
+
+    $.ajax({
+        url: "/test_upload/" + source_id,
+        type: "POST",
+        data: JSON.stringify(new_port_id),
+        contentType: "application/json; charset=utf-8",
+        success: function(data) {
+            console.log(data);
+            //var items = [];
+
+            if(data == null || data.message == undefined || data.success == undefined){
+                lost_connection();
+                return;
+            }
+
+            $("#upload-status").text(data.message);
+
+
+            // Generate explanation HTML
+            if( data.success == false ){
+                console.log("ERROR. Something went wrong during the test upload.");
+                $('#test-progress').addClass('progress_failed');
+                show_upload_errors(data.errors)
+            }
+            else{
+                console.log("Test went ok, waiting 20 seconds before starting final upload.");
+                $('#test-progress').addClass('progress_complete');
+                setTimeout(function(){
+                    console.log("Starting upload now");
+                    upload();
+                }, 20000);
+                
+            }
+            
         }
     });
 }
@@ -310,34 +356,41 @@ function test_upload(){
 
 function upload(){
     console.log("Asking to start upload");
-    
-    $.getJSON( "/upload/" + source_id, function( data ) {
-        console.log(data);
-        //var items = [];
-        
-        if(data == null || data.message == undefined || data.success == undefined){
-            lost_connection();
-            return;
-        }
-        
-        $("#upload-status").text(data.message);
-        
-        // Generate explanation HTML
-        if( data.success == false ){
-            console.log("ERROR. Something went wrong during upload.");
-            console.log(data.errors);
-            $('#upload-progress').addClass('progress_failed');
-            show_upload_errors(data.errors)
-        }
-        else{
-            console.log("Upload went ok");
-            $('#upload-progress').addClass('progress_complete');
-            setTimeout(function(){
-                //Finally, show the last step to the user
-                $("ol.wizard.numeric").wizard('nextStep');
-                show_step(5);
-                show_serial_debug();
-            }, 2000);
+
+
+    $.ajax({
+        url: "/upload/" + source_id,
+        type: "POST",
+        data: JSON.stringify(new_port_id),
+        contentType: "application/json; charset=utf-8",
+        success: function(data) {
+            console.log(data);
+            //var items = [];
+
+            if(data == null || data.message == undefined || data.success == undefined){
+                lost_connection();
+                return;
+            }
+
+            $("#upload-status").text(data.message);
+
+            // Generate explanation HTML
+            if( data.success == false ){
+                console.log("ERROR. Something went wrong during upload.");
+                console.log(data.errors);
+                $('#upload-progress').addClass('progress_failed');
+                show_upload_errors(data.errors)
+            }
+            else{
+                console.log("Upload went ok");
+                $('#upload-progress').addClass('progress_complete');
+                setTimeout(function(){
+                    //Finally, show the last step to the user
+                    $("ol.wizard.numeric").wizard('nextStep');
+                    show_step(5);
+                    show_serial_debug();
+                }, 1000);
+            }
         }
     });
 }
@@ -377,59 +430,73 @@ function lost_connection(){
 
 function show_serial_debug(){
     console.log("Showing serial debug");
+
     
-    $('<iframe id="serial-output-iframe" src="/serial-output"/>').appendTo('#serial-output-container');
+    // Send the new values back to the server (the add-on)
+    $.ajax({
+        url: "/serial_output",
+        type: "POST",
+        data: JSON.stringify(new_port_id), //{"port_id":port_id}
+        contentType: "application/json; charset=utf-8",
+        success: function(data) { 
+            
+            //if(data == null || data.message == undefined || data.success == undefined){
+            if(data == null){
+                console.error("Empty response");
+                return;
+            }
+            
+            console.log(data);
+            if( data.new_lines != undefined ){
+                console.log("new serial lines: " + data.new_lines);
+                //$('#serial-output-container').append(document.createTextNode(data.new_lines));
+                $('#serial-output-container').append(data.new_lines);
+            }
+            
+            if( new_port_id != "" ){
+                setTimeout(function(){
+                    show_serial_debug();
+                }, 1000);
+            }
+            
+            
+        }
+    });
+}
+
+
+
+function serial_close(){
+    console.log("Requesting closure of serial port");
+
+    $('#serial-output-container').empty();
     
+    // Send the new values back to the server (the add-on)
+    $.ajax({
+        url: "/serial_close",
+        type: "POST",
+        data: JSON.stringify(new_port_id),
+        contentType: "application/json; charset=utf-8",
+        success: function(data) {
+            console.log("Got response");
+            if(data == null){
+                console.error("Empty response");
+                return;
+            }
+            
+            console.log(data);
+            if( data.success ){
+                console.log("closed port succesfully");
+            }
+        }
+    });
 }
     
 
 
 
 
-/*
 
-$("#nameGroupHolder").html('');
-for(var i=0;i<json.length;i++){
-    console.log(json[i]);
-
-    //var sentences = $(json[i].comment) //$('#para').text() // get example text
-    //.match(/[^\.\!\?]+[\.\!\?]+/g); // extract all sentences
-    //console.log(sentences);
-
-    //let lines = json[i].comment.split(/[\s,]+/)
-    let lines = json[i].comment.split(/^([ A-Za-z0-9_@();,$%ˆ#&+-]*[\.\s|\?\s|\!\s]?)\s?(.*)/); // get first sentence.
-    console.log(lines);
-
-
-
-    //const regex = /.*?(\.)(?=\s[A-Z])/;
-    //const str = `© 2018 Telegraph Publishing LLC Four area men between the ages of 18 and 20 were arrested early this morning on a variety of charges in an overnight burglary at the Tater Hill Golf Course in Windham. According to a Vermont State Police press release, at about 2:30 a.m. Saturday, troopers got a report that [&#8230;]`;
-    //let m;
-
-
-
-    //if ((m = regex.exec(json[i].comment)) !== null) {
-    //	console.log(m[0]);
-    //}
-
-    html = '<hr/><div class="form-group"><label>';
-
-    if ('checkbox' in json[i]){
-        checkedStatus = "";
-        if(json[i].checkbox){
-            checkedStatus = "checked";
-        }
-        html += '<input type="checkbox" value="checkbox" ' + checkedStatus + '>' + lines[1] + '</label><p class="help-block">' + lines[2] + '</p>';
-    }
-    if ('input' in json[i]){
-        html += lines[1] + '</label>';
-        html += '<input class="form-control " value="' + json[i].input + '"><p class="help-block">' + lines[2] + '</p>';
-    }
-    html += '</div>'
-$("#nameGroupHolder").append(html);
-
-
-*/
 
 
 

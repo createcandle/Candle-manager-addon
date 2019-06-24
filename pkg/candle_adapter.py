@@ -13,11 +13,12 @@ import json
 import re
 import subprocess
 import threading
+#from threading import Timer
 import serial #as ser
 import serial.tools.list_ports as prtlst
 from flask import Flask,Response, request,render_template,jsonify, url_for
 
-
+#import asyncio
 
 from gateway_addon import Adapter, Device, Database
 
@@ -104,10 +105,11 @@ class CandleAdapter(Adapter):
         self.json_sketches_url = ""
         self.simple_password = ""
         self.arduino_type = "nano"
+        self.advanced_interface = False
+        self.initial_usb_port_scan_finished = False
         
         # Get the user's settings
         self.add_from_config()
-        
         
         # Create the Candle thing
         try:
@@ -214,9 +216,15 @@ class CandleAdapter(Adapter):
 
         # USB scanning variables
         self.previous_serial_devices = []
-        self.last_added_serial_port = ""
-        self.scan_usb_ports()
-        self.last_added_serial_port = "" # Making sure we don't start with any device selected as the device to upload to.
+        #self.last_added_serial_port = ""
+        try:
+            print("Making initial scan of USB ports")
+            self.scan_usb_ports()
+        except:
+            print("Error during initial scan of usb ports")
+        
+        #self.last_added_serial_port = "" # Making sure we don't start with any device selected as the device to upload to.
+        self.open_serial_ports = []
         
         # Arduino CLI
         self.upload_status = "Preparing"
@@ -234,16 +242,22 @@ class CandleAdapter(Adapter):
             if self.DEBUG:
                 print("Preparing a Flask webserver called " + str(__name__))
 
-            # Disable outputting to console
-            #if not self.DEBUG:
-            #    log = logging.getLogger('werkzeug')
-            #    log.setLevel(logging.ERROR)
+            #Disable outputting Flask messages to console
+            #if not self.DEVELOPMENT:
+            #    flask_log = logging.getLogger('werkzeug')
+            #    flask_log.setLevel(logging.ERROR)
 
             app = Flask(__name__, root_path= os.path.join(self.add_on_path, 'pkg') )
 
             @app.route('/') # The home page
             def index():
                 return render_template('index.html')
+
+
+            @app.route('/init_interface') # Returns a list of all available source code in the source folder
+            def app_init_interface():
+                d = self.init_interface()
+                return jsonify(d)   
 
             @app.route('/source') # Returns a list of all available source code in the source folder
             def app_scan_source_dir():
@@ -281,72 +295,39 @@ class CandleAdapter(Adapter):
                 d = self.compile(source_id)
                 return jsonify(d)
 
-            @app.route('/test_upload/<source_id>') # Do a test upload, and see if the correct bootloader is set.
+            @app.route('/test_upload/<source_id>', methods=['POST']) # Do a test upload, and see if the correct bootloader is set.
             def app_test_upload(source_id): # It doesn't actually use the source_id.
-
-                d = self.test_upload(source_id)
+                data = request.get_json()
+                if self.DEBUG:
+                    print("Port to test upload to:" + str(data))
+                d = self.test_upload(source_id,data)
                 return jsonify(d)
 
 
-            @app.route('/upload/<source_id>') # Returns a list of all available source code in the source folder
+            @app.route('/upload/<source_id>', methods=['POST']) # Uploads the sketch to the Arduino
             def app_upload(source_id):
-
-                d = self.upload(source_id, self.bootloader)
+                data = request.get_json()
+                if self.DEBUG:
+                    print("Port to upload to:" + str(data))
+                d = self.upload(source_id, data, self.bootloader)
                 return jsonify(d)
 
 
-            @app.route('/serial-output')
+            @app.route('/serial_output', methods=['POST'])
             def app_serial_output():
+                data = request.get_json()
+                if self.DEBUG:
+                    print("Port to listen to:" + str(data))
+                d = self.serial_output(data)
+                return jsonify(d)
 
-                try:
-                    self.open_serial_port.close()
-                except:
-                    pass
-
-                def inner2():
-                    if self.last_added_serial_port == "":
-                        yield "No serial port found"
-                    try:
-                        if self.DEBUG:
-                            print("Opening serial port")
-                        self.open_serial_port = serial.Serial(self.last_added_serial_port, 115200, timeout=1)
-                        self.open_serial_port.flushInput()
-                    except:
-                        print("Could not open serial port")
-
-                    countdown_counter = 60
-                    while countdown_counter > 0:
-                        if self.DEBUG:
-                            print("countdown_counter = " + str(countdown_counter))
-                        try:
-                            ser_bytes = self.open_serial_port.readline()
-                            decoded_bytes = ser_bytes.decode("utf-8") # float(ser_bytes[0:len(ser_bytes)-2].decode("utf-8"))
-                            if len(decoded_bytes) > 0:
-                                decoded_bytes += "<br/>"
-                            if self.DEBUG:
-                                print(str(decoded_bytes))
-                            yield decoded_bytes
-
-                        except:
-                            print("Could not read from the serial port")
-                            break
-
-                        countdown_counter -= 1
-                        sleep(.1)
-
-                    print("Closing serial port")
-                    self.open_serial_port.close()
-
-                return Response(inner2(), mimetype='text/html')  # text/html is required for most browsers to show th$
-
-
-            @app.route('/stop_listening') # If it's still open, close the serial port.
-            def app_stop_listening():
-                try:
-                    self.open_serial_port.close()
-                except:
-                    pass
-                return '{"success":True}'
+            @app.route('/serial_close', methods=['POST']) # If it's still open, close the serial port.
+            def app_serial_close():
+                data = request.get_json()
+                if self.DEBUG:
+                    print("Port to close:" + str(data))
+                d = self.close_serial_port(data)
+                return jsonify(d)
 
 
             # Used to aid development
@@ -377,6 +358,9 @@ class CandleAdapter(Adapter):
     def update_arduino_cli(self):
         success = False
         index_updated = False
+        
+        if self.DEVELOPMENT:
+            return
         
         # Updating Arduino CLI index
         try:
@@ -415,6 +399,10 @@ class CandleAdapter(Adapter):
 
 
     def download_source(self, sketch_url):
+        
+        if self.DEVELOPMENT:
+            return
+        
         print("downloading sketch at " + str(sketch_url))
         pattern = '^http.*\/([\w\-]*)\.ino'  # Extract file name (without .ino)
         matched = re.match(pattern, sketch_url)
@@ -467,7 +455,11 @@ class CandleAdapter(Adapter):
 
     def scan_usb_ports(self): # Scans for USB serial devices
         current_serial_devices = []
-        result = {"state":"stable"}
+        result = {"state":"stable","port_id":[]}
+        
+        #if self.initial_usb_port_scan_finished == False: # To avoid any open window asking for newly attached devices even though the initial scan isn't done yet.
+        #    print("Initial scan of USB parts isn't done yet")
+        #    return result
         
         try:    
             ports = prtlst.comports()
@@ -479,26 +471,47 @@ class CandleAdapter(Adapter):
                     if str(port[0]) not in current_serial_devices:
                         current_serial_devices.append(str(port[0]))
                         if str(port[0]) not in self.previous_serial_devices:
-                            self.last_added_serial_port = str(port[0])
+                            #self.last_added_serial_port = str(port[0]) # TODO remove this
+                            result["new_port_id"] = str(port[0])
                             #if self.DEVELOPMENT:
                             #    self.last_added_serial_port = '/dev/ttyUSB1' # Overrides the port to use during development of this add-on.
-                            print("New USB device added: " + self.last_added_serial_port)
+                            #print("New USB device added. self.last_added_serial_port: " + self.last_added_serial_port)
                             result["state"] = "added"
+                            #break
 
             #print("Current USB devices: " + str(current_serial_devices))
 
             if len(self.previous_serial_devices) > len(current_serial_devices):
+                try:
+                    #removed[4] = list(set(self.previous_serial_devices) - set(current_serial_devices))
+                    removed = list(set(self.previous_serial_devices) - set(current_serial_devices))
+                    print("removed list = " + str(removed))
+                    result["removed_port_ids"] = removed
+                    
+                except:
+                    print("Too many USB devices removed at once (whoa)")
+                
                 print("A USB device was removed")
                 result["state"] = "removed"
         
         except Exception as e:
             print("Error getting serial ports list: " + str(e))
             
-            
+
         self.previous_serial_devices = current_serial_devices
-        
+        if self.initial_usb_port_scan_finished == False:
+            print("Initial scan of USB ports complete")
+            self.initial_usb_port_scan_finished = True
+        #return {"state":"added","new_port_id":'/dev/ttyUSB1'} # emulate a new device being added, useful during development
         return result
 
+
+
+    def init_interface(self):
+        print("Returning preferences for interface")
+        self.scan_usb_ports()
+        result = {"advanced_interface":self.advanced_interface}
+        return result
 
 
     def scan_source_dir(self):
@@ -570,29 +583,10 @@ class CandleAdapter(Adapter):
                         continue
                         
                     elif "MY_ENCRYPTION_SIMPLE_PASSWD" in line or "MY_SECURITY_SIMPLE_PASSWD" in line or "MY_SIGNING_SIMPLE_PASSWD" in line:
-                        
-                        if generate_new_code:
-                            try:
-                                # REPLACING PASSWORD
-                                pattern = '^#define\s\w+SIMPLE_PASSWD\s\"([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"'
-                                matched = re.match(pattern, line)
-                                if matched and matched.group(1) != None:
-                                    if self.simple_password == "":
-                                        continue # If the password has been set to "", then the user doesn't want security. Skip adding the security line to the code.
-                                    line = line.replace(str(matched.group(1)),self.simple_password, 1)
-                                    print("updated security line:" + str(line))
-                                    new_code += str(line) #+ "\n"
-                                    continue
-                            except:
-                                print('Unable to merge password while generating new code')
-                                continue
-                        else:
-                            continue
+                        continue
                             
                         
                     else:
-                        
-                        
                         try:
                             # NORMAL VARIABLE
                             pattern = '\w+\s\w+\[?[0-9]*?\]?\s?\=\s?\"?([\w\+\!\@\#\$\%\ˆ\&\*\(\)\.\,\-]*)\"?\;\s*\/?\/?\s?([\w\"\_\-\+\s]*[\.\s|\?\s])(.*)'
@@ -697,7 +691,7 @@ class CandleAdapter(Adapter):
                     print("Done with settings")
                     new_code += str(line) #+ "\n"
                     if not generate_new_code:
-                        print("Breaking early")
+                        print("Breaking early, since there is no need to scan all the Arduino code yet.")
                         break # No point in getting the rest of the code if this is not a 'generate code' run.
                     continue
             
@@ -743,8 +737,27 @@ class CandleAdapter(Adapter):
                 except:
                     print('library name scraping error')
             
+                try:
+                    # REPLACING PASSWORD
+                    pattern = '^#define\s\w+SIMPLE_PASSWD\s\"([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"'
+                    matched = re.match(pattern, line)
+                    if matched and matched.group(1) != None:
+                        print("found security line")
+                        if str(self.simple_password) == "":
+                            print("Password was empty, so not adding security line to final code")
+                            continue # If the password has been set to "", then the user doesn't want security. Skip adding the security line to the code.
+                        line = line.replace(str(matched.group(1)),self.simple_password, 1)
+                        print("updated security line:" + str(line))
+                        new_code += str(line) #+ "\n"
+                        continue
+                except:
+                    print('Unable to merge password while generating new code')
+                    continue
+
             
-            print("done scanning libraries")
+            
+            
+            print("done scanning libraries and updating MySensors security/signing/encryption passwords")
             
             if settings_counter == len(new_values_list):
                 print("settings_counter == len(new_values_list)")
@@ -849,30 +862,40 @@ class CandleAdapter(Adapter):
 
 
 
-    def test_upload(self,source_id):
+    def test_upload(self,source_id, port_id):
         print("Doing a test upload of the Candle Cleaner")
-        result = {"success":False,"message":"Test failed"}
+        result = {"success":False,"message":"Testing"}
         errors = []
+        if str(port_id) == "":
+            print("Error: no port_id set")
+            return result
+        
+        try:
+            close_serial_port(str(port_id))
+        except:
+            print("tried to close serial port, just to be safe.")
+        
+        print("Initial bootloader value: " + str(self.bootloader))
         
         if "Candle_cleaner" in self.sources:
-            test_result = self.upload(self.sources.index("Candle_cleaner"), self.bootloader)
+            test_result = self.upload(self.sources.index("Candle_cleaner"), str(port_id), self.bootloader)
             if self.DEBUG:
                 print("first test result:" + str(test_result))
                 print("success:" + str(test_result["success"]))
             if test_result["success"] is True:
-                print("Worked on the first try")
+                print("Test upload succeeded on the first try")
                 result["success"] = True
-                sleep(15) # Allow the cleaner to do it's work.
+                #sleep(20) # Allow the cleaner to do it's work.
             elif "Error syncing up with the Arduino" in test_result["errors"]:
                 print("sync error was spotted in error list")
                 self.bootloader = ':cpu=atmega328old' if self.bootloader == ':cpu=atmega328' else ':cpu=atmega328'
                 print("new bootloader value: " + str(self.bootloader))
-                test_result = self.upload(self.sources.index("Candle_cleaner"), self.bootloader)
+                test_result = self.upload(self.sources.index("Candle_cleaner"), str(port_id), self.bootloader)
                 if self.DEBUG:
                     print("second test result:" + str(test_result))
                 if test_result["success"]:
                     result["success"] = True
-                    sleep(15) # Allow the cleaner to do it's work.
+                    #sleep(20) # Allow the cleaner to do it's work.
                 else:
                     errors.append("Error syncing. Tried both the old and new bootloader.")
         else:
@@ -884,42 +907,144 @@ class CandleAdapter(Adapter):
 
 
 
-    def upload(self, source_id, bootloader=""):
+    def upload(self, source_id, port_id, bootloader=""):
         print("Uploading")
         if self.DEBUG:
             print("bootloader parameter = " + str(bootloader))
         result = {"success":False,"message":"Upload failed"}
-        errors = []
-        source_name = str(self.sources[int(source_id)])
-        if self.DEBUG:
-            print("Code name: " + str(source_name))
-        path = str(self.add_on_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
         
-        command = self.add_on_path + '/arduino-cli upload -p ' + str(self.last_added_serial_port) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
-        if self.DEBUG:
-            print("Arduino CLI command = " + str(command))
-        for line in run_command(command):
-            #line = line.decode('utf-8')
+        if str(port_id) == "":
+            print("Error: no port_id set")
+            return result
+        
+        errors = []
+        try:
+            source_name = str(self.sources[int(source_id)])
             if self.DEBUG:
-                print(line)
-            if line.startswith( 'Error' ) and not line.startswith( 'Error: exit status 1' ) and not line.startswith( 'Error during upload' ):
-                if not self.DEBUG:
-                    print(line)
-                    
-                if "getsync() attemp" in line:
-                    errors.append("Error syncing up with the Arduino")
-                else:
-                    errors.append(line)
-            #if line.startswith('Command failed'):
-            #    result["message"] = "Upload failed"
-            #elif line.startswith('Command success'):
-            if line.startswith('Command success'):
-                result["message"] = "Uploaded succesfully."
-                result["success"] = True
-            time.sleep(.1)
+                print("Code name: " + str(source_name))
+            path = str(self.add_on_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
 
+            command = self.add_on_path + '/arduino-cli upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
+            if self.DEVELOPMENT:
+                print("Arduino CLI command = " + str(command))
+            for line in run_command(command):
+                #line = line.decode('utf-8')
+                #if self.DEBUG:
+                #print(line)
+                if line.startswith( 'Error' ) and not line.startswith( 'Error: exit status 1' ) and not line.startswith( 'Error during upload' ):
+                    #if not self.DEBUG:
+                    print(line)
+
+                    if "getsync() attemp" in line:
+                        errors.append("Error syncing up with the Arduino")
+                    else:
+                        errors.append(line)
+                #if line.startswith('Command failed'):
+                #    result["message"] = "Upload failed"
+                #elif line.startswith('Command success'):
+                if line.startswith('Command success'):
+                    result["message"] = "Uploaded succesfully."
+                    result["success"] = True
+                time.sleep(.1)
+        except:
+            print("Error during upload process")
+                
         result["errors"] = errors
         return result
+
+
+    def serial_output(self, port_id):
+
+        print("received port id for serial output: " + str(port_id))
+        if str(port_id) == "":
+            print("No port_id received")
+            return
+        new_lines = ""
+        result = {}
+        port_exists = False
+        port_is_open = False
+        some_dict = {}
+        current_serial_object = None
+        
+        # Check if the port has already been created
+        for key in self.open_serial_ports:
+            if port_id in key:
+                if self.DEBUG:
+                    print("Serial port existed in serial port list")
+                #print(str(key))
+                port_exists = True
+                key[port_id]['countdown'] = 3 # reset countdown.
+                current_serial_object = key[port_id]['port_object']
+                if current_serial_object.isOpen():
+                    port_is_open = True
+                else:
+                    current_serial_object.open()
+                    port_is_open = True
+                    if self.DEBUG:
+                        print("re-opened port")
+        
+            
+        # Create the port if it does not exist    
+        if port_exists == False and port_is_open == False:
+            if self.DEBUG:
+                print("Opening serial port")
+            try:
+                new_port = serial.Serial(port_id, 115200, timeout=1)
+                current_serial_object = new_port
+                port_exists = True
+                port_is_open = True  
+                if self.DEBUG:
+                    print("port opened: " + str(new_port))
+                try:
+                    port_item = {port_id:{'port_object':new_port, "countdown":3}}
+                    self.open_serial_ports.append(port_item)
+                    #current_serial_object = port_item[port_id]['port_object']
+                except Exception as e:
+                    print("Failed to append serial port object to port object list: " + str(e))
+                
+            except Exception as e:
+                print("Failed to create serial port object: " + str(e))
+
+
+
+
+        if port_exists == True and port_is_open == True:
+            try:
+                while( current_serial_object.inWaiting() > 0 ):
+                    ser_bytes = current_serial_object.readline()
+                    decoded_bytes = ser_bytes.decode("utf-8") # float(ser_bytes[0:len(ser_bytes)-2].decode("utf-8"))
+                    if len(decoded_bytes) > 0:
+                        decoded_bytes += "<br/>"
+                        #if self.DEBUG:
+                        print("New serial line: " + str(decoded_bytes))
+                        new_lines += str(decoded_bytes)
+                        #if len(new_lines) > 500:
+                        #    print("Huge amount of serial data")
+                        #    break
+            except Exception as e:
+                print("Could not read from the serial port: " + str(e))
+
+        result["new_lines"] = new_lines
+        
+        return result
+    
+
+
+    def close_serial_port(self, port_id):
+        result = {'success':True}
+        print("port id to close: " + str(port_id))
+        try:
+            for key in self.open_serial_ports:
+                if port_id in key:
+                    current_serial_object = key[port_id]['port_object']
+                    if current_serial_object.isOpen():
+                        print("Port was open, closing...")
+                        current_serial_object.close()
+        except:
+            print("Error closing port")
+            result['success'] = False
+        return result
+
 
 
 
@@ -938,26 +1063,28 @@ class CandleAdapter(Adapter):
             database = Database('Candle-manager')
             if not database.open():
                 return
-
+            
             config = database.load_config()
             database.close()
-
+            
             if not config:
                 print("Error: no settings found for Candle Manager.")
                 return
-
-            print("Loading settings for Candle manager")
-
+            
+            print("Loading settings for Candle manager Config: " + str(config))
+            
             if 'Sketches' in config:
                 self.json_sketches_url = str(config['Sketches'])
                 print("-Sketch URL found in settings")
             else:
                 print("-No Arduino sketch(es) URL found in the code.")
-
+                
             if 'Password' in config:
                 self.simple_password = str(config['Password'])
                 print("-Password found in settings")
-
+            else:
+                print("No password found in settings")
+                
             if 'Arduino type' in config:
                 if str(config['Arduino type']) == "Arduino Nano":
                     self.arduino_type == "nano"
@@ -966,6 +1093,10 @@ class CandleAdapter(Adapter):
                 if str(config['Arduino type']) == "Arduino Mega":
                     self.arduino_type == "mega"
                 print("Arduino type found in settings")
+                
+            if 'Advanced' in config:
+                self.advanced_interface = bool(config['Advanced'])
+                
         except:
             print("Error loading configuration")
 
