@@ -83,7 +83,7 @@ class CandleAdapter(Adapter):
         self.adding_via_timer = False
         self.pairing = False
         self.name = self.__class__.__name__
-        Adapter.__init__(self, 'candle-adapter', 'candle-adapter', verbose=verbose)
+        Adapter.__init__(self, 'Candle-manager-addon', 'Candle-manager-addon', verbose=verbose)
         #print("Adapter ID = " + self.get_id())
         
         print("paths:" + str(_CONFIG_PATHS))
@@ -577,7 +577,22 @@ class CandleAdapter(Adapter):
                         continue
                         
                     elif "MY_ENCRYPTION_SIMPLE_PASSWD" in line or "MY_SECURITY_SIMPLE_PASSWD" in line or "MY_SIGNING_SIMPLE_PASSWD" in line:
-                        continue
+                        try:
+                            # REPLACING PASSWORD
+                            pattern = '^#define\s\w+SIMPLE_PASSWD\s\"([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"'
+                            matched = re.match(pattern, line)
+                            if matched and matched.group(1) != None:
+                                print("found security line")
+                                if str(self.simple_password) == "":
+                                    print("Password was empty, so not adding security line to final code")
+                                    continue # If the password has been set to "", then the user doesn't want security. Skip adding the security line to the code.
+                                line = line.replace(str(matched.group(1)),self.simple_password, 1)
+                                print("updated security line:" + str(line))
+                                new_code += str(line) #+ "\n"
+                                continue
+                        except:
+                            print('Unable to merge password while generating new code')
+                            continue
                             
                         
                     else:
@@ -692,7 +707,28 @@ class CandleAdapter(Adapter):
 
             # This part of the code deals with the rest of the Arduino code. It scans for libraries to install.
             if state == 2:
-                new_code += str(line) #+ "\n"
+                
+                if "MY_ENCRYPTION_SIMPLE_PASSWD" in line or "MY_SECURITY_SIMPLE_PASSWD" in line or "MY_SIGNING_SIMPLE_PASSWD" in line:
+                    try:
+                        # REPLACING PASSWORD
+                        pattern = '^#define\s\w+SIMPLE_PASSWD\s\"([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"'
+                        matched = re.match(pattern, line)
+                        if matched and matched.group(1) != None:
+                            print("found security line")
+                            if str(self.simple_password) == "":
+                                print("Password was empty, so not adding security line to final code")
+                                continue # If the password has been set to "", then the user doesn't want security. Skip adding the security line to the code.
+                            line = line.replace(str(matched.group(1)),self.simple_password, 1)
+                            print("updated security line:" + str(line))
+                            new_code += str(line) #+ "\n"
+                            continue
+                    except:
+                        print('Unable to merge password while generating new code')
+                        continue
+                        
+                        
+                else:
+                    new_code += str(line)
                 
         
         if state == 0: # If we are still at state 0, then the code did not conform the the standard, as no settings part was found.
@@ -731,27 +767,8 @@ class CandleAdapter(Adapter):
                 except:
                     print('library name scraping error')
             
-                try:
-                    # REPLACING PASSWORD
-                    pattern = '^#define\s\w+SIMPLE_PASSWD\s\"([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"'
-                    matched = re.match(pattern, line)
-                    if matched and matched.group(1) != None:
-                        print("found security line")
-                        if str(self.simple_password) == "":
-                            print("Password was empty, so not adding security line to final code")
-                            continue # If the password has been set to "", then the user doesn't want security. Skip adding the security line to the code.
-                        line = line.replace(str(matched.group(1)),self.simple_password, 1)
-                        print("updated security line:" + str(line))
-                        new_code += str(line) #+ "\n"
-                        continue
-                except:
-                    print('Unable to merge password while generating new code')
-                    continue
-
             
-            
-            
-            print("done scanning libraries and updating MySensors security/signing/encryption passwords")
+            print("done scanning libraries")
             
             if settings_counter == len(new_values_list):
                 print("settings_counter == len(new_values_list)")
@@ -1054,7 +1071,7 @@ class CandleAdapter(Adapter):
     def add_from_config(self):
         """Attempt to add all configured devices."""
         try:
-            database = Database('Candle-manager')
+            database = Database('Candle-manager-addon')
             if not database.open():
                 return
             
@@ -1077,13 +1094,13 @@ class CandleAdapter(Adapter):
                 self.simple_password = str(config['Encryption password'])
                 print("-Encryption password found in settings")
             else:
-                print("No Encryption password found in settings")
+                print("-No Encryption password found in settings")
             
             if 'Password' in config:
                 self.simple_password = str(config['Password'])
                 print("-Password found in settings")
             else:
-                print("No Password found in settings")
+                print("-No Password found in settings")
                 
             if 'Arduino type' in config:
                 if str(config['Arduino type']) == "Arduino Nano":
