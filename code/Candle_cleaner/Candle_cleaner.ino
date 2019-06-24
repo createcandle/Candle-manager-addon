@@ -1,100 +1,51 @@
 /*
-
- * Candle Manager Example
-
+ * Candle cleaner
  * 
-
- * This is an example for Candle Manager.
-
+ * This script is required by the Candle Manager add-on for the Mozilla WebThings Gateway, as it is used during the 'test' phase. 
  * 
-
- * This script clears the memory (eeprom) of the Arduino that you upload this code to. It then simply blinks its LED.
-
+ * It functions as a 'factory reset. It clears the memory (eeprom) of the Arduino that you upload this code to. Afterwards it simply blinks its LED.
  * 
-
- * Wiping the memory can in rare occasions be necessary if a device has previously been used with encryption. This wipes the old encryption settings. They can sometimes interfere when you create a new device, like a ghost from the past.
-
+ * Wiping the memory removes old security/encryption settings, as well as any old network ID that the device may have had.
  * 
-
  * SETTINGS */ 
 
-int blinkSeconds = 2;  // Blink duration. How many seconds should a LED blink take?
+int blink_seconds = 1;                                        // Blink duration. How many seconds should a LED blink take?
 
  /* END OF SETTINGS
-
  * 
-
  * 
-
  */
 
+#include <EEPROM.h>                                           // Import the required library to work with the EEPROM (storage memory) of the Arduino
 
 
-#include <EEPROM.h>
-
-
-
-// There is an option to auto-install missing libraries.
-
-// #include <Your library name here.h> // The library name in between < and > (of in between "") will be used.
-
-
-
-// #include <Your library name here.h> // "name to search for". In this case the "name to searh for" will be used to search for (and install) the required library. This is useful because library names are often different from their .h file names, and must be given exactly.
-
-
-
-
-
-// the setup function runs once when you press reset or power the board
-
+// The setup function runs once when you press reset or power the board
 void setup()
-
 {
-
-  Serial.begin(115200); // for serial debugging over USB.
-
+  Serial.begin(115200);                                       // Allows for serial debugging over USB.
   Serial.println("Hello");
-
-  pinMode(LED_BUILTIN, OUTPUT);
-
+  
   Serial.println("Starting memory wipe.");
-
   for (int i = 0 ; i < EEPROM.length() ; i++) {
-
-    EEPROM.write(i, 0);
-
+    EEPROM.write(i, 255);
   }
-
   Serial.println("My memory (eeprom) has been wiped.");
 
-
-
-  if(blinkSeconds <= 0){    // This should not be set to 0 (or less).
-
-    blinkSeconds = 1;
-
+  if(blink_seconds <= 0){                                     // Blink time should not be set to 0 (or less).
+    blink_seconds = 1;
   }
-
+  pinMode(LED_BUILTIN, OUTPUT);                               // Set the LED pin to output mode.
 }
 
 
-
-
-
-// the loop function runs over and over again forever
-
+//The main loop function runs over and over again, forever.
 void loop() {
-
-  digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-
-  delay( (blinkSeconds / 2)*1000 );                       // wait before we continue
-
-  digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
-
-  delay( (blinkSeconds / 2)*1000 );                       // wait before we continue
-
+  
+  digitalWrite(LED_BUILTIN, HIGH);                            // Turn the LED on (HIGH is the voltage level).
+  delay( (blink_seconds / 2)*1000 );                          // Wait before we continue.
+  
+  digitalWrite(LED_BUILTIN, LOW);                             // Turn the LED off by making the voltage LOW.
+  delay( (blink_seconds / 2)*1000 );                          // Wait before we continue.
+  
   Serial.println("I just blinked my LED");
-
 }
-
