@@ -50,7 +50,7 @@
     "exec": "python3 {path}/bootstrap.py",
     "config": {
       "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json",
-      "Password": "changeme",
+      "Encryption password": "changeme",
       "Arduino type": "Arduino Nano",
       "Advanced": false,
       "Debug": false
@@ -58,7 +58,7 @@
     "schema": {
       "type": "object",
       "properties": {
-        "Password": {
+        "Encryption password": {
           "type": "string",
           "description": "A password for the security (encryption and/or signing) of the Candle/MySensors network. If you change this you will have to manually re-upload code to all your Candle/MySensors devices."
         },
