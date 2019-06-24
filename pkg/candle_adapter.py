@@ -603,7 +603,7 @@ class CandleAdapter(Adapter):
                             #print("matched?:" + str(matched))
                             if matched:
                                 if matched.group(2) != None:
-                                    title = str(matched.group(2))
+                                    title = str(matched.group(2)).strip( '.' )
                                 else:
                                     continue # if a setting does not at the very least have a title it cannot be used.
                                 if matched.group(3) != None:
@@ -631,7 +631,7 @@ class CandleAdapter(Adapter):
                             matched = re.match(pattern, line)
                             if matched:
                                 if matched.group(2) != None:
-                                    title = str(matched.group(2))
+                                    title = str(matched.group(2)).strip( '.' )
                                 else:
                                     continue # if a setting does not at the very least have a title it cannot be used.
                                 if matched.group(3) != None:
@@ -663,7 +663,7 @@ class CandleAdapter(Adapter):
                                 toggle_state = 0 if str(matched.group(1)) == "//" else 1
     
                                 if matched.group(2) != None:
-                                    title = str(matched.group(2))
+                                    title = str(matched.group(2)).strip( '.' )
                                 else:
                                     continue # if a setting does not at the very least have a title it cannot be used.
                                 if matched.group(3) != None:
