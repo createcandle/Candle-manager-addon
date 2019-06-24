@@ -1090,11 +1090,11 @@ class CandleAdapter(Adapter):
             else:
                 print("-No Arduino sketch(es) URL found in the code.")
                 
-            if 'Encryption password' in config:
-                self.simple_password = str(config['Encryption password'])
-                print("-Encryption password found in settings")
-            else:
-                print("-No Encryption password found in settings")
+            #if 'Encryption password' in config:
+            #    self.simple_password = str(config['Encryption password'])
+            #    print("-Encryption password found in settings")
+            #else:
+            #    print("-No Encryption password found in settings")
             
             if 'Password' in config:
                 self.simple_password = str(config['Password'])
