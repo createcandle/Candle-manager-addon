@@ -99,7 +99,7 @@ class CandleAdapter(Adapter):
         print("self.add_on_path = " + str(self.add_on_path))
         
         self.DEBUG = False
-        self.DEVELOPMENT = True
+        self.DEVELOPMENT = False
         
         self.port = 8686
         self.json_sketches_url = ""
@@ -359,9 +359,6 @@ class CandleAdapter(Adapter):
         success = False
         index_updated = False
         
-        if self.DEVELOPMENT:
-            return
-        
         # Updating Arduino CLI index
         try:
             command = self.add_on_path + '/arduino-cli core update-index'
@@ -399,9 +396,6 @@ class CandleAdapter(Adapter):
 
 
     def download_source(self, sketch_url):
-        
-        if self.DEVELOPMENT:
-            return
         
         print("downloading sketch at " + str(sketch_url))
         pattern = '^http.*\/([\w\-]*)\.ino'  # Extract file name (without .ino)
@@ -1079,11 +1073,17 @@ class CandleAdapter(Adapter):
             else:
                 print("-No Arduino sketch(es) URL found in the code.")
                 
+            if 'Encryption password' in config:
+                self.simple_password = str(config['Encryption password'])
+                print("-Encryption password found in settings")
+            else:
+                print("No Encryption password found in settings")
+            
             if 'Password' in config:
                 self.simple_password = str(config['Password'])
                 print("-Password found in settings")
             else:
-                print("No password found in settings")
+                print("No Password found in settings")
                 
             if 'Arduino type' in config:
                 if str(config['Arduino type']) == "Arduino Nano":
