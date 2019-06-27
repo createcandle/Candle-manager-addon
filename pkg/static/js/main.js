@@ -6,7 +6,11 @@ var doing_serial_check = false
 
 $(document).ready(function(){
 	console.log("document ready");
-    
+
+    //$.ajaxSetup({
+    //    timeout: 0
+    //});
+
     //var el = $("ol.wizard.numeric");
     
     $('#step3 button.back').on('click', function () {
@@ -25,10 +29,10 @@ $(document).ready(function(){
     
     $('#step5 button.next').on('click', function () {
         $("ol.wizard.numeric").wizard('nextStep');
-        new_port_id = "";   // Reset some variables
-        source_id = -1;     // Reset some variables
         show_step(6);
         serial_close();
+        new_port_id = "";   // Reset some variables
+        source_id = -1;     // Reset some variables
     });
 
     $('#skip-to-check').on('click', function () {
@@ -45,9 +49,10 @@ $(document).ready(function(){
     });
     
     // Ask if a USB device has been plugged in.
-    init_interface();
+    init();
+    
     //setTimeout(poll_USB, 1000);
-    setInterval(poll_USB, 1000);
+    
 });
 
 
@@ -58,21 +63,30 @@ function show_step(step_number){
     $("#content > #step" + step_number).addClass("active");
 }
 
-function init_interface(){
-    $.getJSON( "/init_interface", function( data ) {
-        console.log(data);
-        if ( data.advanced == 1 ){
-            $('.advanced').show(); // Show all the advanced interface elements.
-        }
-        /*
-        var items = [];
-        $.each( data, function( key, value ) {
-            //console.log("at item:" + key);
-            items.push( "<li id=source" + key + " data-source-id=" + key + ">" + value + "</li>" );
-        });
-        */
+function init(){
+    $.ajax({
+        url: "/init", 
+        dataType: 'json',
+        error: function(){
+            console.log("Error during init ajax request (timeout?)");
+            $('#skip-update-text').removeClass('hidden');
+            $('button#skip-update').fadeIn('slow');
+        },
+        success: function(data){
+            if(data == null){
+                console.log("Error: init function returned empty data.")
+            }
+            console.log(data);
+            if ( data.advanced == 1 ){
+                $('.advanced').show(); // Show all the advanced interface elements.    
+            }
+            show_step(1);
+            setInterval(poll_USB, 1000);
+            $( "#wizard-container" ).slideDown("fast");
+            
+        },
+        timeout: 20000 // Sets timeout to 20 seconds.
     });
-
 }
 
 
@@ -447,6 +461,7 @@ function show_serial_debug(){
             }
             
             console.log(data);
+            $('#serial-output-container-spinner').remove();
             if( data.new_lines != undefined ){
                 console.log("new serial lines: " + data.new_lines);
                 //$('#serial-output-container').append(document.createTextNode(data.new_lines));

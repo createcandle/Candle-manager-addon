@@ -4,6 +4,8 @@ import os
 import sys
 import time
 from time import sleep
+#from datetime import datetime, timedelta
+#import traceback
 import asyncio
 import logging
 import urllib
@@ -22,6 +24,8 @@ from flask import Flask,Response, request,render_template,jsonify, url_for
 
 from gateway_addon import Adapter, Device, Database
 
+DAY = 86400
+
 _TIMEOUT = 3
 
 __location__ = os.path.realpath(
@@ -33,35 +37,6 @@ _CONFIG_PATHS = [
 
 if 'MOZIOT_HOME' in os.environ:
     _CONFIG_PATHS.insert(0, os.path.join(os.environ['MOZIOT_HOME'], 'config'))
-
-
-    
-#def flaskThread():
-#    app.run()
-
-
-#global current_serial_devices, previous_serial_devices
-#current_serial_devices = {}
-#previous_serial_devices = {}
-
-
-
-'''
-def enumerate_serial_devices():
-    return set([item for item in list_ports.comports()])
-
-def check_new_devices(old_devices):
-    devices = enumerate_serial_devices()
-    added = devices.difference(old_devices)
-    removed = old_devices.difference(devices)
-    if added:
-        print('added: {}'.format(added))
-    if removed:
-        print('removed: {}'.format(removed))
-    return devices
-
-#old_devices = enumerate_serial_devices()
-'''
 
 
 
@@ -107,9 +82,12 @@ class CandleAdapter(Adapter):
         self.arduino_type = "nano"
         self.advanced_interface = False
         self.initial_usb_port_scan_finished = False
+        self.last_updated = time.time()
+        
         
         # Get the user's settings
         self.add_from_config()
+        
         
         # Create the Candle thing
         try:
@@ -143,52 +121,26 @@ class CandleAdapter(Adapter):
         
         # Download/update sketches
         try:
-            print("self.json_sketches_url = " + str(self.json_sketches_url))
-            if self.json_sketches_url.startswith("http") and self.json_sketches_url.endswith(".json"):
-
-                    response = requests.get(self.json_sketches_url, allow_redirects=True) # was True
-
-                    #print("response.status_code = " + str(response.status_code))
-                    #print("response.encoding = " + str(response.encoding))
-                    #print("Got response")
-                    #print("response: " + str(response))
-                    json_sketches_data = json.loads(response.content.decode('utf-8'))
-                    if self.DEBUG:
-                        print(str(json_sketches_data["sketch_urls"]))
-                    for sketch_url in json_sketches_data["sketch_urls"]:
-                        self.download_source(sketch_url)
-
-
-            elif self.json_sketches_url.startswith("http") and self.json_sketches_url.endswith(".ino"):
-                self.download_source(self.json_sketches_url)
-        except Exception as e:
-            print("Failed to download sketches from JSON file: " + str(e))
-
+            self.update_sketches(self.json_sketches_url)
+        except:
+            print("Failed to update sketches during add-on start (no internet connection?).")
 
         # Update the Arduino CLI:
         try:
             if self.update_arduino_cli():
                 print("Succesfully updated Arduino CLI index and AVR")
+                
             else:
                 print("Warning: could not check for updates for the Arduino CLI (no internet connection?)")
         except Exception as e:
             print("Failed to download sketches from JSON file: " + str(e))
 
             
-        # Get JSON list of already installer Arduino libraries
+        # Get JSON list of already installed Arduino libraries
         print("Looking for already installed libraries")
-        self.required_libraries = []
-        self.installed_libraries = []
-        try:
-            #command = self.add_on_path + '/arduino-cli lib list --all --format=json' # perhaps use os.path.join(self.add_on_path, 'arduino-cli') + 'lib list --all --format=json' ?
-            command = os.path.join(self.add_on_path, 'arduino-cli') + ' lib list --all --format=json'
-            installed_libraries_response = json.loads(run_command_json(command))
-
-            for lib_object in installed_libraries_response['libraries']:
-                print("Found library: " + str(lib_object['library']['Properties']['name']))
-                self.installed_libraries.append(str(lib_object['library']['Properties']['name']))
-        except:
-            print("failed to check libraries")
+        self.required_libraries = set()
+        self.installed_libraries = set()
+        self.check_installed_arduino_libraries()
             
         # Pre-compile the cleaner code
         self.cleaner_pre_compiled = False
@@ -215,7 +167,7 @@ class CandleAdapter(Adapter):
             print("Failed to pre-compile Candle Cleaner code (which is uses during testing): " + str(e))
 
         # USB scanning variables
-        self.previous_serial_devices = []
+        self.previous_serial_devices = set()
         #self.last_added_serial_port = ""
         try:
             print("Making initial scan of USB ports")
@@ -254,10 +206,18 @@ class CandleAdapter(Adapter):
                 return render_template('index.html')
 
 
-            @app.route('/init_interface') # Returns a list of all available source code in the source folder
-            def app_init_interface():
-                d = self.init_interface()
+            @app.route('/init') # Returns intitial variables to the Candle Manager browser tab, such as whether to show advances features.
+            def app_init():
+                d = self.init()
                 return jsonify(d)   
+
+            @app.route('/update_sketches', methods=['POST']) # Download the latest version of the sketches.
+            def app_update_sketches(source_id): # It doesn't actually use the source_id.
+                data = request.get_json()
+                if self.DEBUG:
+                    print("URL to download sketch(es) from:" + str(data))
+                d = self.update_sketches(str(data))
+                return jsonify(d)
 
             @app.route('/source') # Returns a list of all available source code in the source folder
             def app_scan_source_dir():
@@ -303,7 +263,6 @@ class CandleAdapter(Adapter):
                 d = self.test_upload(source_id,data)
                 return jsonify(d)
 
-
             @app.route('/upload/<source_id>', methods=['POST']) # Uploads the sketch to the Arduino
             def app_upload(source_id):
                 data = request.get_json()
@@ -311,7 +270,6 @@ class CandleAdapter(Adapter):
                     print("Port to upload to:" + str(data))
                 d = self.upload(source_id, data, self.bootloader)
                 return jsonify(d)
-
 
             @app.route('/serial_output', methods=['POST'])
             def app_serial_output():
@@ -372,8 +330,8 @@ class CandleAdapter(Adapter):
                         print("CLI update index success")
                     index_updated = True
                 time.sleep(.1)
-        except:
-            print("Error sending Arduino CLI update index command")
+        except Exception as e:
+            print("Error sending Arduino CLI update index command: " + str(e))
             
         # Downloading latest version of AVR for Arduino CLI, which allows it to work with the Arduino Nano, Uno and Mega
         if index_updated:
@@ -389,29 +347,65 @@ class CandleAdapter(Adapter):
                             print("CLI update AVR success")
                         success = True
                     time.sleep(.1)
-            except:
-                print("Error sending Arduino CLI update AVR command")
+            except Exception as e:
+                print("Error sending Arduino CLI update AVR command: " + str(e))
         return success
 
 
+    def check_installed_arduino_libraries(self):
+        try:
+            #command = self.add_on_path + '/arduino-cli lib list --all --format=json' # perhaps use os.path.join(self.add_on_path, 'arduino-cli') + 'lib list --all --format=json' ?
+            command = os.path.join(self.add_on_path, 'arduino-cli') + ' lib list --all --format=json'
+            installed_libraries_response = json.loads(run_command_json(command))
 
+            for lib_object in installed_libraries_response['libraries']:
+                print("Found library: " + str(lib_object['library']['Properties']['name']))
+                #try:
+                self.installed_libraries.add(str(lib_object['library']['Properties']['name']))
+                #except Exception as e:
+                #    print("Could not add library to list of installed libraries: " + str(e))
+        except Exception as e:
+            print("Failed to check libraries: " + str(e))
+    
+
+    # Checks whether to download a list of files from a json, or just a single file.
+    def update_sketches(self, sketches_url="https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json"):
+        try:
+            print("received sketches_url = " + str(sketches_url))
+            if sketches_url.startswith("http") and sketches_url.endswith(".json"):
+
+                    response = requests.get(sketches_url, allow_redirects=True) # was True
+                    json_sketches_data = json.loads(response.content.decode('utf-8'))
+                    if self.DEBUG:
+                        print(str(json_sketches_data["sketch_urls"]))
+                    for sketch_url in json_sketches_data["sketch_urls"]:
+                        self.download_source(sketch_url)
+
+
+            elif sketches_url.startswith("http") and sketches_url.endswith(".ino"):
+                self.download_source(sketches_url)
+        except Exception as e:
+            print("Failed to download sketches from JSON file: " + str(e))
+    
+    # downloads a single .ino file
     def download_source(self, sketch_url):
         
-        print("downloading sketch at " + str(sketch_url))
+        if self.DEBUG:
+            print("downloading sketch at " + str(sketch_url))
         pattern = '^http.*\/([\w\-]*)\.ino'  # Extract file name (without .ino)
         matched = re.match(pattern, sketch_url)
         #print("matched?:" + str(matched))
         if matched:
             if matched.group(1) != None:
                 target_filename = str(matched.group(1))
-                if self.DEBUG:
-                    print("Sketch file name: " + target_filename)
+                #if self.DEBUG:
+                #    print("Sketch file name: " + target_filename)
                 target_dir = os.path.join(self.add_on_path, "source", target_filename)
                 target_file = os.path.join(target_dir, target_filename + ".ino")
                 
-                if self.DEBUG:
-                    print("target_dir  = " + str(target_dir))
-                    print("target_file = " + str(target_file))
+                #if self.DEBUG:
+                #    print("target_dir  = " + str(target_dir))
+                #    print("target_file = " + str(target_file))
                 
                 attempts = 0
                 while attempts < 3:
@@ -448,7 +442,7 @@ class CandleAdapter(Adapter):
         
 
     def scan_usb_ports(self): # Scans for USB serial devices
-        current_serial_devices = []
+        current_serial_devices = set()
         result = {"state":"stable","port_id":[]}
         
         #if self.initial_usb_port_scan_finished == False: # To avoid any open window asking for newly attached devices even though the initial scan isn't done yet.
@@ -463,8 +457,9 @@ class CandleAdapter(Adapter):
                     #    print("port: " + str(port[0]))
                     #    print("usb device description: " + str(port[1]))
                     if str(port[0]) not in current_serial_devices:
-                        current_serial_devices.append(str(port[0]))
+                        current_serial_devices.add(str(port[0]))
                         if str(port[0]) not in self.previous_serial_devices:
+                            print("New device plugged into port " + str(port[0]))
                             #self.last_added_serial_port = str(port[0]) # TODO remove this
                             result["new_port_id"] = str(port[0])
                             #if self.DEVELOPMENT:
@@ -478,9 +473,11 @@ class CandleAdapter(Adapter):
             if len(self.previous_serial_devices) > len(current_serial_devices):
                 try:
                     #removed[4] = list(set(self.previous_serial_devices) - set(current_serial_devices))
-                    removed = list(set(self.previous_serial_devices) - set(current_serial_devices))
+                    #removed = set(self.previous_serial_devices) - set(current_serial_devices)
+                    removed = self.previous_serial_devices - current_serial_devices
+                    #removed = current_serial_devices.difference(self.previous_serial_devices)
                     print("removed list = " + str(removed))
-                    result["removed_port_ids"] = removed
+                    result["removed_port_ids"] = list(removed)
                     
                 except:
                     print("Too many USB devices removed at once (whoa)")
@@ -501,10 +498,43 @@ class CandleAdapter(Adapter):
 
 
 
-    def init_interface(self):
-        print("Returning preferences for interface")
-        self.scan_usb_ports()
-        result = {"advanced_interface":self.advanced_interface}
+    def init(self):
+        print("Running init for new Candle Manager tab")
+
+        result_message = "Updated succesfully"
+        try:
+            self.scan_usb_ports()
+            print("1. Finished USB scan")
+
+            self.check_installed_arduino_libraries()
+            print("2. Updated list of already install Arduino libraries")
+        except Exception as e:
+            print("Failure during init: " + str(e))
+                    
+        # Check if we already updated recently.
+        now = time.time()
+        #print("now: " + str(now))
+        #print("last updated: " + str(self.last_updated))
+        #then = time.mktime(self.last_updated.timetuple())
+        if (now - self.last_updated) > DAY:
+            print("Last update was a day ago, will check for updates.")
+            # more than 24 hours passed
+        
+            try:
+                self.update_sketches()
+                print("3. Updated sketches")
+                self.update_arduino_cli()
+                print("4. Updated Arduino CLI")
+                
+                self.last_updated = time.time() # remember the time we last updated
+
+            except Exception as e:
+                print("Error while attempting init update: " + str(e))
+                result_message = "Something went wrong during updating."
+        else:
+            print("Already updated quite recently.")
+                
+        result = {"success":True, "advanced_interface":self.advanced_interface, "message":result_message}
         return result
 
 
@@ -537,7 +567,6 @@ class CandleAdapter(Adapter):
 
         result = {}
         settings = []
-        required_libraries = []
         lines = []
         new_code = ""
         settings_counter = 0
@@ -549,9 +578,8 @@ class CandleAdapter(Adapter):
         file.close()
         
         for line in lines:
-            #print(line)
             
-            # This part deals with the header text
+            # The first part extracts the header text from the code.
             if state == 0:
                 try:
                     new_code += str(line) #+ "\n" # if generate_new_code is set to true, this will create the code with the updated settings.
@@ -561,7 +589,6 @@ class CandleAdapter(Adapter):
                             explanation += str(line) #+ "\n"
                     else:
                         state = 1
-                        print("Done with explanation")
                         result["explanation"] = explanation
                         continue
                 except Exception as e:
@@ -587,7 +614,8 @@ class CandleAdapter(Adapter):
                                     print("Password was empty, so not adding security line to final code")
                                     continue # If the password has been set to "", then the user doesn't want security. Skip adding the security line to the code.
                                 line = line.replace(str(matched.group(1)),self.simple_password, 1)
-                                print("updated security line:" + str(line))
+                                if self.DEBUG:
+                                    print("updated security line:" + str(line))
                                 new_code += str(line) #+ "\n"
                                 continue
                         except:
@@ -611,7 +639,8 @@ class CandleAdapter(Adapter):
 
                                 if generate_new_code and settings_counter < len(new_values_list):
                                     line = line.replace(str(matched.group(1)), str(new_values_list[settings_counter]), 1)
-                                    print("updated line:" + str(line))
+                                    if self.DEBUG:
+                                        print("updated line:" + str(line))
                                     new_code += str(line) #+ "\n"
                                     
                                 else:
@@ -639,7 +668,8 @@ class CandleAdapter(Adapter):
                                     
                                 if generate_new_code and settings_counter < len(new_values_list):
                                     line = line.replace(str(matched.group(1)),str(new_values_list[settings_counter]), 1)
-                                    print("updated line:" + str(line))
+                                    if self.DEBUG:
+                                        print("updated line:" + str(line))
                                     new_code += str(line) #+ "\n"
                                     
                                 settings.append({"type":"text" ,"value":str(matched.group(1)), "title":title ,"comment":comment})
@@ -656,10 +686,7 @@ class CandleAdapter(Adapter):
                             pattern = '^(\/\/)?\s?#define\s\w+\s*\/?\/?\s?([\w\"\_\-\+\s]*[\.\s|\?\s])(.*)'
                             matched = re.match(pattern, line)
                             if matched:
-                                #print("toggle define match line:" + line)
-                                #print("- Slashes?: " + str(matched.group(1)))
-                                #print("- comment = " + str(matched.group(2)))
-                                #print("checkbox matched.group(1) = " + str(matched.group(1)))
+
                                 toggle_state = 0 if str(matched.group(1)) == "//" else 1
     
                                 if matched.group(2) != None:
@@ -670,20 +697,27 @@ class CandleAdapter(Adapter):
                                     comment = str(matched.group(3))
                                 
                                 if generate_new_code and settings_counter < len(new_values_list):
-                                    #print("MODIFYING TOGGLE")
-                                    #print("new_values_list[settings_counter] = " + str(new_values_list[settings_counter]))
-                                    #print(line)
+                                    
                                     if toggle_state == 1 and new_values_list[settings_counter] == 0:
                                         if self.DEBUG:
                                             print("should be off, so should add //")
                                         line = "//" + line
+                                        
+                                        # A shortcut to try and anticipate which bootloader to try first.
+                                        if "RF-Nano" in title:
+                                            self.bootloader = ":cpu=atmega328old"
                                         
                                     if toggle_state == 0 and new_values_list[settings_counter] == 1:
                                         if self.DEBUG:
                                             print("should be on, so removing //")
                                         line = re.sub("^\s?\/\/", "", line) # remove // from beginning of the line
                                         
-                                    print("updated line:" + str(line))
+                                        # A shortcut to try and anticipate which bootloader to try first.
+                                        if "RF-Nano" in title:
+                                            self.bootloader = ":cpu=atmega328"
+                                        
+                                    if self.DEBUG:
+                                        print("updated line:" + str(line))
                                     new_code += str(line) #+ "\n"
                                     
                                 settings.append({"type":"checkbox" ,"value":toggle_state, "title":title ,"comment":comment})
@@ -759,7 +793,7 @@ class CandleAdapter(Adapter):
                         if library_name is not "" and library_name is not None:
                             if library_name not in self.installed_libraries and library_name not in self.required_libraries:
                                 print("->Not installed yet")
-                                self.required_libraries.append(str(library_name))
+                                self.required_libraries.add(str(library_name))
                             else:
                                 print("-Library is already installed, skipping.")
                         else:
@@ -771,7 +805,7 @@ class CandleAdapter(Adapter):
             print("done scanning libraries")
             
             if settings_counter == len(new_values_list):
-                print("settings_counter == len(new_values_list)")
+                #print("settings_counter == len(new_values_list)")
                 result["success"] = True
                 result["code"] = new_code
                 #print(new_code)
@@ -805,69 +839,72 @@ class CandleAdapter(Adapter):
 
 
     def check_libraries(self, source_id):
-        print("Checking for missing libraries")
+        print("Checking for missing libraries, and installing if required.")
         result = {"success":False,"message":"Downloading required libraries failed"}
         errors = []
+        try:
+            if len(self.required_libraries) == 0:
+                result["success"] = True
+                result["message"] = "No new libraries required."
+            else:
+                for library_name in self.required_libraries:
+                    if str(library_name) not in self.installed_libraries:
+                        print("DOWNLOADING: " + str(library_name))
+                        command = self.add_on_path + '/arduino-cli lib install "' + str(library_name) + '"'
+                        for line in run_command(command):
+                            if self.DEBUG:
+                                print(line)
+                            if line.startswith( 'Error' ):
+                                print(line)
+                                errors.append(line)
+                                # Perhaps the proces should be broken off here.
+                            elif line.startswith('Command success'):
+                                result["message"] = "Installed library succesfully. Next step is actual upload."
+                                result["success"] = True
+                            time.sleep(.1)
+        except Exception as e:
+            print("Error while trying to download new required libraries: " + str(e))
         
-        if len(self.required_libraries) == 0:
-            result["success"] = True
-            result["message"] = "No new libraries required."
-        else:
-            for library_name in self.required_libraries:
-                print("DOWNLOADING: " + str(library_name))
-                command = self.add_on_path + '/arduino-cli lib install "' + str(library_name) + '"'
-                for line in run_command(command):
-                    if self.DEBUG:
-                        print(line)
-                    if line.startswith( 'Error' ):
-                        if not self.DEBUG:
-                            print(line)
-                        errors.append(line)
-                    if line.startswith('Command success'):
-                        result["message"] = "Compiled succesfully. Next step is actual upload."
-                        result["success"] = True
-                    time.sleep(.1)
+        self.required_libraries.clear() # remove all required library names from the set, ready for the next round.
+        
         result["errors"] = errors
         return result
-    
     
     
     def compile(self, source_id):
         print("Compiling")
         result = {"success":False, "message":"Compiling failed"}
         errors = []
-        source_name = str(self.sources[int(source_id)])
-        path = str(self.add_on_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
         
-        if not os.path.isdir(path):
-            result["success"] = False
-            result["message"] = "Error: cannot find the file to upload."
-            return result
-        
-        
-        command = self.add_on_path + '/arduino-cli compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
-        for line in run_command(command):
-            #line = line.decode('utf-8')
-            if self.DEBUG:
-                print(line)
-            if line.startswith( 'Error' ) and not line.startswith( 'Error: exit status 1' ):
-                if not self.DEBUG:
-                    print(line)
-                errors.append(line)
-            if line.startswith('Command failed'):
-                result["message"] = "Compiling failed"
-            elif line.startswith('Command success'):
-                result["message"] = "Compiled succesfully."
-                result["success"] = True
-            #elif line.startswith('Global variables use'):
-            #    result["message"] = "Compiled succesfully."
-            #    result["success"] = True
+        try:
+            source_name = str(self.sources[int(source_id)])
+            path = str(self.add_on_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
 
-            time.sleep(.1)
-            
-        
-        #result["success"] = True
-        #result["message"] = "Finished compiling"
+            if not os.path.isdir(path):
+                result["success"] = False
+                result["message"] = "Error: cannot find the file to upload."
+                return result
+
+
+            command = self.add_on_path + '/arduino-cli compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
+            for line in run_command(command):
+                #line = line.decode('utf-8')
+                if self.DEBUG:
+                    print(line)
+                if line.startswith( 'Error' ) and not line.startswith( 'Error: exit status 1' ):
+                    if not self.DEBUG:
+                        print(line)
+                    errors.append(line)
+                if line.startswith('Command failed'):
+                    result["message"] = "Compiling failed"
+                elif line.startswith('Command success'):
+                    result["message"] = "Compiled succesfully."
+                    result["success"] = True
+
+                time.sleep(.1)
+        except Exception as e:
+            print("Error during compiling: " + str(e))
+
         result["errors"] = errors
         return result
 
@@ -881,41 +918,35 @@ class CandleAdapter(Adapter):
             print("Error: no port_id set")
             return result
         
-        try:
-            close_serial_port(str(port_id))
-        except:
-            print("tried to close serial port, just to be safe.")
-        
         print("Initial bootloader value: " + str(self.bootloader))
         
-        if "Candle_cleaner" in self.sources:
-            test_result = self.upload(self.sources.index("Candle_cleaner"), str(port_id), self.bootloader)
-            if self.DEBUG:
-                print("first test result:" + str(test_result))
-                print("success:" + str(test_result["success"]))
-            if test_result["success"] is True:
-                print("Test upload succeeded on the first try")
-                result["success"] = True
-                #sleep(20) # Allow the cleaner to do it's work.
-            elif "Error syncing up with the Arduino" in test_result["errors"]:
-                print("sync error was spotted in error list")
-                self.bootloader = ':cpu=atmega328old' if self.bootloader == ':cpu=atmega328' else ':cpu=atmega328'
-                print("new bootloader value: " + str(self.bootloader))
+        try:
+            if "Candle_cleaner" in self.sources:
                 test_result = self.upload(self.sources.index("Candle_cleaner"), str(port_id), self.bootloader)
                 if self.DEBUG:
-                    print("second test result:" + str(test_result))
-                if test_result["success"]:
+                    print("first test result:" + str(test_result))
+                    print("success:" + str(test_result["success"]))
+                if test_result["success"] is True:
+                    print("Test upload succeeded on the first try")
                     result["success"] = True
-                    #sleep(20) # Allow the cleaner to do it's work.
-                else:
-                    errors.append("Error syncing. Tried both the old and new bootloader.")
-        else:
-            errors.append("The Candle Cleaner code, which is used to test, was not found on your system.")
-            
+                elif "Error syncing up with the Arduino" in test_result["errors"]:
+                    print("sync error was spotted in error list")
+                    self.bootloader = ':cpu=atmega328old' if self.bootloader == ':cpu=atmega328' else ':cpu=atmega328'
+                    print("new bootloader value: " + str(self.bootloader))
+                    test_result = self.upload(self.sources.index("Candle_cleaner"), str(port_id), self.bootloader)
+                    if self.DEBUG:
+                        print("second test result:" + str(test_result))
+                    if test_result["success"]:
+                        result["success"] = True
+                    else:
+                        errors.append("Error syncing. Tried both the old and new bootloader.")
+            else:
+                errors.append("The Candle Cleaner code, which is used to test, was not found on your system.")
+        except Exception as e:
+            print("Error during test upload phase: " + str(e))
+
         result["errors"] = errors
         return result
-        
-
 
 
     def upload(self, source_id, port_id, bootloader=""):
@@ -928,6 +959,11 @@ class CandleAdapter(Adapter):
             print("Error: no port_id set")
             return result
         
+        try:
+            close_serial_port(str(port_id))
+        except:
+            pass
+            
         errors = []
         try:
             source_name = str(self.sources[int(source_id)])
@@ -939,9 +975,6 @@ class CandleAdapter(Adapter):
             if self.DEVELOPMENT:
                 print("Arduino CLI command = " + str(command))
             for line in run_command(command):
-                #line = line.decode('utf-8')
-                #if self.DEBUG:
-                #print(line)
                 if line.startswith( 'Error' ) and not line.startswith( 'Error: exit status 1' ) and not line.startswith( 'Error during upload' ):
                     #if not self.DEBUG:
                     print(line)
@@ -950,15 +983,12 @@ class CandleAdapter(Adapter):
                         errors.append("Error syncing up with the Arduino")
                     else:
                         errors.append(line)
-                #if line.startswith('Command failed'):
-                #    result["message"] = "Upload failed"
-                #elif line.startswith('Command success'):
                 if line.startswith('Command success'):
                     result["message"] = "Uploaded succesfully."
                     result["success"] = True
                 time.sleep(.1)
-        except:
-            print("Error during upload process")
+        except Exception as e:
+            print("Error during upload process: " + str(e))
                 
         result["errors"] = errors
         return result
@@ -966,9 +996,10 @@ class CandleAdapter(Adapter):
 
     def serial_output(self, port_id):
 
-        print("received port id for serial output: " + str(port_id))
+        #print("received port id for serial output: " + str(port_id))
         if str(port_id) == "":
-            print("No port_id received")
+            if self.DEBUG:
+                print("No port_id received")
             return
         new_lines = ""
         result = {}
@@ -977,28 +1008,30 @@ class CandleAdapter(Adapter):
         some_dict = {}
         current_serial_object = None
         
-        # Check if the port has already been created
-        for key in self.open_serial_ports:
-            if port_id in key:
-                if self.DEBUG:
-                    print("Serial port existed in serial port list")
-                #print(str(key))
-                port_exists = True
-                key[port_id]['countdown'] = 3 # reset countdown.
-                current_serial_object = key[port_id]['port_object']
-                if current_serial_object.isOpen():
-                    port_is_open = True
-                else:
-                    current_serial_object.open()
-                    port_is_open = True
+        try:
+            # Check if the port has already been created
+            for key in self.open_serial_ports:
+                if port_id in key:
                     if self.DEBUG:
-                        print("re-opened port")
-        
+                        print("Serial port existed in serial port list")
+                    #print(str(key))
+                    port_exists = True
+                    key[port_id]['countdown'] = 3 # reset countdown.
+                    current_serial_object = key[port_id]['port_object']
+                    if current_serial_object.isOpen():
+                        port_is_open = True
+                    else:
+                        current_serial_object.open()
+                        port_is_open = True
+                        if self.DEBUG:
+                            print("re-opened port")
+        except Exception as e:
+            print("Error while checking if serial port object already existed: " + str(e))
             
         # Create the port if it does not exist    
         if port_exists == False and port_is_open == False:
             if self.DEBUG:
-                print("Opening serial port")
+                print("Opening new serial port")
             try:
                 new_port = serial.Serial(port_id, 115200, timeout=1)
                 current_serial_object = new_port
@@ -1007,7 +1040,7 @@ class CandleAdapter(Adapter):
                 if self.DEBUG:
                     print("port opened: " + str(new_port))
                 try:
-                    port_item = {port_id:{'port_object':new_port, "countdown":3}}
+                    port_item = {port_id:{'port_object':new_port, "countdown":3}} # Countdown may be used later to self-close the ports after a while. But it may not be necessary.
                     self.open_serial_ports.append(port_item)
                     #current_serial_object = port_item[port_id]['port_object']
                 except Exception as e:
@@ -1017,13 +1050,11 @@ class CandleAdapter(Adapter):
                 print("Failed to create serial port object: " + str(e))
 
 
-
-
         if port_exists == True and port_is_open == True:
             try:
                 while( current_serial_object.inWaiting() > 0 ):
                     ser_bytes = current_serial_object.readline()
-                    decoded_bytes = ser_bytes.decode("utf-8") # float(ser_bytes[0:len(ser_bytes)-2].decode("utf-8"))
+                    decoded_bytes = ser_bytes.decode("utf-8") # float(ser_bytes[0:len(ser_bytes)-2].decode("utf-8")) # Use ASCII instead?
                     if len(decoded_bytes) > 0:
                         decoded_bytes += "<br/>"
                         #if self.DEBUG:
@@ -1051,8 +1082,8 @@ class CandleAdapter(Adapter):
                     if current_serial_object.isOpen():
                         print("Port was open, closing...")
                         current_serial_object.close()
-        except:
-            print("Error closing port")
+        except Exception as e:
+            print("Error closing port:" + str(e))
             result['success'] = False
         return result
 
@@ -1062,7 +1093,8 @@ class CandleAdapter(Adapter):
     def unload(self):
         print("Shutting down adapter")
         try:
-            pass
+            for port_name in self.previous_serial_devices:
+                close_serial_port(str(port_name))
         except:
             print("Unable to cleanly close the add-on")
 
@@ -1089,12 +1121,6 @@ class CandleAdapter(Adapter):
                 print("-Sketch URL found in settings")
             else:
                 print("-No Arduino sketch(es) URL found in the code.")
-                
-            #if 'Encryption password' in config:
-            #    self.simple_password = str(config['Encryption password'])
-            #    print("-Encryption password found in settings")
-            #else:
-            #    print("-No Encryption password found in settings")
             
             if 'Password' in config:
                 self.simple_password = str(config['Password'])
@@ -1137,18 +1163,6 @@ class CandleDevice(Device):
         adapter -- the Adapter managing this device
         """
 
-        
-        '''
-        self.events = [
-            {
-                name: 'added',
-                metadata: {
-                    description: 'A device was added',
-                    type: 'string',
-                }
-            }
-        ]
-        '''
         self.links = [
             {
                 "rel": "alternate",

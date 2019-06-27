@@ -23,7 +23,7 @@
                     <img id="logo" src="{{ url_for('static', filename='images/candle_logo_simple.png') }}" />
                 </div>
             
-                <div id="wizard-container" class="wizard-container">
+                <div id="wizard-container" style="display: none" class="wizard-container">
                     <ol class="wizard numeric">
                         <li class="active">
                             <span> 1 </span>
@@ -53,14 +53,25 @@
                 </div>
                 
                 <div id="content">
-                
-                    <div id="step1" class="active">
-                        <h2>Plug in USB</h2>
-                        <p>Please plug in the Arduino. Once it's connected, you will be automatically taken to step 2.</p>
-                        <div id="spinner_container">
-                            <div class="spinner">
-                              <div class="left-cube"></div>
-                              <div class="right-cube"></div>
+                    <div id="step0" class="active">
+                        <h2>Updating</h2>
+                        <p>Please wait while the Candle Manager checks for updates.</p>
+                        <p class="hidden" id="skip-update-text">It's taking much longer than normal. You can continue anyway if you'd like.</p>
+                        <div class="centering-container spinner">
+                            <div class="circular-spinner"></div>
+                        </div>
+                        <div class="button-footer">
+                            <div></div>
+                            <button id="skip-update" style="display:none" class="next">Next</button>
+                        </div>
+                    </div>
+                    <div id="step1">
+                        <h2>Plug in your new device</h2>
+                        <p>Please plug your Arduino into the USB port now. If it's already connected, unplug it and plug it back in after a few seconds. Once it's detected, you will be automatically taken to step 2.</p>
+                        <div class="centering-container">
+                            <div class="plug-in-spinner">
+                                <div class="left-cube"></div>
+                                <div class="right-cube"></div>
                             </div>
                         </div>
                     
@@ -123,8 +134,12 @@
                     </div>
                     <div id="step5">
                         <h2>Check</h2>
-                        <p>When you connect your device via USB you can listen to what it's thinking. Check these message for any errors.</p>
-                        <div id="serial-output-container"></div>
+                        <p>When you connect your device via USB you can listen to what it's thinking. Check these messages for any errors:</p>
+                        <div id="serial-output-container">
+                            <div id="serial-output-container-spinner" class="centering-container spinner">
+                                <div class="circular-spinner"></div>
+                            </div>
+                        </div>
                         <div id="serial-output-footer">
                             <span class="advanced">Listening to port:</span> <span class="advanced new-port-id"></span>
                         </div>
