@@ -95,7 +95,7 @@ class CandleAdapter(Adapter):
             self.handle_device_added(device)
         except:
             print("Error: unable to create the 'Create Candle' thing. You can try to manually open this URL in your browser: http://gateway.local:" + str(self.port))
-        print(">>>>>>>>>>")
+
         try:
             #self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
             self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
@@ -212,7 +212,7 @@ class CandleAdapter(Adapter):
                 return jsonify(d)   
 
             @app.route('/update_sketches', methods=['POST']) # Download the latest version of the sketches.
-            def app_update_sketches(source_id): # It doesn't actually use the source_id.
+            def app_update_sketches():
                 data = request.get_json()
                 if self.DEBUG:
                     print("URL to download sketch(es) from:" + str(data))
@@ -370,22 +370,28 @@ class CandleAdapter(Adapter):
 
     # Checks whether to download a list of files from a json, or just a single file.
     def update_sketches(self, sketches_url="https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json"):
+        result = {"success":False}
         try:
             print("received sketches_url = " + str(sketches_url))
             if sketches_url.startswith("http") and sketches_url.endswith(".json"):
 
-                    response = requests.get(sketches_url, allow_redirects=True) # was True
-                    json_sketches_data = json.loads(response.content.decode('utf-8'))
-                    if self.DEBUG:
-                        print(str(json_sketches_data["sketch_urls"]))
-                    for sketch_url in json_sketches_data["sketch_urls"]:
-                        self.download_source(sketch_url)
-
-
+                response = requests.get(sketches_url, allow_redirects=True) # was True
+                json_sketches_data = json.loads(response.content.decode('utf-8'))
+                if self.DEBUG:
+                    print(str(json_sketches_data["sketch_urls"]))
+                for sketch_url in json_sketches_data["sketch_urls"]:
+                    self.download_source(sketch_url)
+                    
             elif sketches_url.startswith("http") and sketches_url.endswith(".ino"):
                 self.download_source(sketches_url)
+            
+            result["success"] = True
+                
         except Exception as e:
             print("Failed to download sketches from JSON file: " + str(e))
+            
+        return result
+    
     
     # downloads a single .ino file
     def download_source(self, sketch_url):
@@ -405,7 +411,7 @@ class CandleAdapter(Adapter):
                 
                 #if self.DEBUG:
                 #    print("target_dir  = " + str(target_dir))
-                #    print("target_file = " + str(target_file))
+                print("Downloading: " + str(target_file) + ".ino")
                 
                 attempts = 0
                 while attempts < 3:
@@ -516,8 +522,8 @@ class CandleAdapter(Adapter):
         #print("now: " + str(now))
         #print("last updated: " + str(self.last_updated))
         #then = time.mktime(self.last_updated.timetuple())
-        if (now - self.last_updated) > DAY:
-            print("Last update was a day ago, will check for updates.")
+        if (now - self.last_updated) > DAY or self.DEBUG:
+            print("Will check for updates.")
             # more than 24 hours passed
         
             try:
@@ -534,7 +540,7 @@ class CandleAdapter(Adapter):
         else:
             print("Already updated quite recently.")
                 
-        result = {"success":True, "advanced_interface":self.advanced_interface, "message":result_message}
+        result = {"success":True, "advanced_interface":self.advanced_interface, "message":result_message,"sketches_url":self.json_sketches_url}
         return result
 
 
@@ -601,6 +607,7 @@ class CandleAdapter(Adapter):
                 if "/* END OF SETTINGS" not in line:
                     if line == '\n':
                         new_code += str(line)
+                        settings.append({"type":"hr" ,"value":1, "title":"" ,"comment":""})
                         continue
                         
                     elif "MY_ENCRYPTION_SIMPLE_PASSWD" in line or "MY_SECURITY_SIMPLE_PASSWD" in line or "MY_SIGNING_SIMPLE_PASSWD" in line:
@@ -622,68 +629,15 @@ class CandleAdapter(Adapter):
                             print('Unable to merge password while generating new code')
                             continue
                             
+                    
+                        
                         
                     else:
-                        try:
-                            # NORMAL VARIABLE
-                            pattern = '\w+\s\w+\[?[0-9]*?\]?\s?\=\s?\"?([\w\+\!\@\#\$\%\ˆ\&\*\(\)\.\,\-]*)\"?\;\s*\/?\/?\s?([\w\"\_\-\+\s]*[\.\s|\?\s])(.*)'
-                            matched = re.match(pattern, line)
-                            #print("matched?:" + str(matched))
-                            if matched:
-                                if matched.group(2) != None:
-                                    title = str(matched.group(2)).strip( '.' )
-                                else:
-                                    continue # if a setting does not at the very least have a title it cannot be used.
-                                if matched.group(3) != None:
-                                    comment = str(matched.group(3))
-
-                                if generate_new_code and settings_counter < len(new_values_list):
-                                    line = line.replace(str(matched.group(1)), str(new_values_list[settings_counter]), 1)
-                                    if self.DEBUG:
-                                        print("updated line:" + str(line))
-                                    new_code += str(line) #+ "\n"
-                                    
-                                else:
-                                    settings.append({"type":"text" ,"value":str(matched.group(1)), "title":title ,"comment":comment})
-                                
-                                
-                                settings_counter += 1 # This is used to keep track of the ID of the settings line we are modifying.
-                                continue
-                        except:
-                            print('normal variable error')
-                            continue
-                            
-                            
-                        try:
-                            # COMPLEX DEFINE WITH A STRING VALUE INSIDE ""
-                            pattern = '^#define\s\w+\s\"?([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"?\s*\/?\/?\s?([\w\"\_\-\+\s]*[\.\s|\?\s])(.*)'
-                            matched = re.match(pattern, line)
-                            if matched:
-                                if matched.group(2) != None:
-                                    title = str(matched.group(2)).strip( '.' )
-                                else:
-                                    continue # if a setting does not at the very least have a title it cannot be used.
-                                if matched.group(3) != None:
-                                    comment = str(matched.group(3))
-                                    
-                                if generate_new_code and settings_counter < len(new_values_list):
-                                    line = line.replace(str(matched.group(1)),str(new_values_list[settings_counter]), 1)
-                                    if self.DEBUG:
-                                        print("updated line:" + str(line))
-                                    new_code += str(line) #+ "\n"
-                                    
-                                settings.append({"type":"text" ,"value":str(matched.group(1)), "title":title ,"comment":comment})
-                                
-                                settings_counter += 1
-                                continue
-                        except:
-                            print('complex define error')
-                            continue
-                            
+                        
                         
                         try:
                             # A TOGGLE DEFINE
-                            pattern = '^(\/\/)?\s?#define\s\w+\s*\/?\/?\s?([\w\"\_\-\+\s]*[\.\s|\?\s])(.*)'
+                            pattern = '^\s*(\/\/)?\s?#define\s\w+\s*\/\/\s?([\w\"\_\-\+\s\(\)]*[\.\s|\?\s])(.*)'
                             matched = re.match(pattern, line)
                             if matched:
 
@@ -727,6 +681,70 @@ class CandleAdapter(Adapter):
                         except:
                             print('checkbox error')
                             continue
+                        
+                        
+                        if line.startswith("//"): # The line starts with // and it's not a toggle define (since that would have been caught by the code above), so we should skip this line.
+                            continue
+                        
+                        
+                        try:
+                            # NORMAL VARIABLE
+                            pattern = '\w+\s\w+\[?[0-9]*?\]?\s?\=\s?\"?([\w\+\!\@\#\$\%\ˆ\&\*\(\)\.\,\-]*)\"?\;\s*\/?\/?\s?([\w\"\_\-\+\s\(\)]*[\.\s|\?\s])(.*)'
+                            matched = re.match(pattern, line)
+                            #print("matched?:" + str(matched))
+                            if matched:
+                                if matched.group(2) != None:
+                                    title = str(matched.group(2)).strip( '.' )
+                                else:
+                                    continue # if a setting does not at the very least have a title it cannot be used.
+                                if matched.group(3) != None:
+                                    comment = str(matched.group(3))
+
+                                if generate_new_code and settings_counter < len(new_values_list):
+                                    line = line.replace(str(matched.group(1)), str(new_values_list[settings_counter]), 1)
+                                    if self.DEBUG:
+                                        print("updated line:" + str(line))
+                                    new_code += str(line) #+ "\n"
+                                    
+                                else:
+                                    settings.append({"type":"text" ,"value":str(matched.group(1)), "title":title ,"comment":comment})
+                                
+                                
+                                settings_counter += 1 # This is used to keep track of the ID of the settings line we are modifying.
+                                continue
+                        except:
+                            print('normal variable error')
+                            continue
+                            
+                            
+                        try:
+                            # COMPLEX DEFINE WITH A STRING VALUE INSIDE ""
+                            pattern = '^#define\s\w+\s\"?([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"?\s*\/?\/?\s?([\w\"\_\-\+\s\(\)]*[\.\s|\?\s])(.*)'
+                            matched = re.match(pattern, line)
+                            if matched:
+                                if matched.group(2) != None:
+                                    title = str(matched.group(2)).strip( '.' )
+                                else:
+                                    continue # if a setting does not at the very least have a title it cannot be used.
+                                if matched.group(3) != None:
+                                    comment = str(matched.group(3))
+                                    
+                                if generate_new_code and settings_counter < len(new_values_list):
+                                    line = line.replace(str(matched.group(1)),str(new_values_list[settings_counter]), 1)
+                                    if self.DEBUG:
+                                        print("updated line:" + str(line))
+                                    new_code += str(line) #+ "\n"
+                                    
+                                settings.append({"type":"text" ,"value":str(matched.group(1)), "title":title ,"comment":comment})
+                                
+                                settings_counter += 1
+                                continue
+                        except:
+                            print('complex define error')
+                            continue
+                            
+                        
+                        
                             
                             
                 else:           # found END OF SETTINGS in the line
@@ -783,15 +801,22 @@ class CandleAdapter(Adapter):
                                 print("avr, so skipping")
                             continue # AVR libraries should already be installed
                         if matched.group(3) != None:
-                            library_name = matched.group(3)
+                            library_name = str(matched.group(3))
                             try:
                                 if matched.group(6) != None:
-                                    library_name = matched.group(6)
+                                    library_name = str(matched.group(6))
                             except:
                                 pass
                             print("library name:" + str(library_name))
                         if library_name is not "" and library_name is not None:
                             if library_name not in self.installed_libraries and library_name not in self.required_libraries:
+                                
+                                
+                                for installed_library_name in self.installed_libraries:
+                                    if installed_library_name in library_name:
+                                        print("Library is an expanded name of an already installed library, skipping.")
+                                        continue
+                                
                                 print("->Not installed yet")
                                 self.required_libraries.add(str(library_name))
                             else:
@@ -1135,7 +1160,7 @@ class CandleAdapter(Adapter):
                     self.arduino_type == "uno"
                 if str(config['Arduino type']) == "Arduino Mega":
                     self.arduino_type == "mega"
-                print("Arduino type found in settings")
+                print("-Arduino type found in settings")
                 
             if 'Advanced' in config:
                 self.advanced_interface = bool(config['Advanced'])
@@ -1175,6 +1200,7 @@ class CandleDevice(Device):
         self.adapter = adapter
 
         self.name = 'Create Candle'
+        self.title = 'Create Candle'
         self.description = 'Create Candle'
 
 

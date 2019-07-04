@@ -2,28 +2,34 @@
 var current_step = 1;
 var source_id = -1;
 var new_port_id = "";
-var doing_serial_check = false
+var running = false;
+var doing_serial_check = false;
+var sketches_url = "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json";
+
 
 $(document).ready(function(){
 	console.log("document ready");
-
+    
     //$.ajaxSetup({
-    //    timeout: 0
+    //    timeout: 60000;
     //});
-
+    
     //var el = $("ol.wizard.numeric");
     
     $('#step3 button.back').on('click', function () {
         $("ol.wizard.numeric").wizard('previousStep');
         show_step(2);
     });
-
+    
     $('#step3 button.next').on('click', function () {
-        return_new_settings()
+        if( running == false ){
+            running = true;
+            return_new_settings();
+        }
     });
-
+    
     $('#step4 button.show.code').on('click', function () {
-        console.log("button clicked to toggle code display")
+        console.log("button clicked to toggle code display");
         $('#new-code').toggleClass( 'hidden' );
     });
     
@@ -33,25 +39,29 @@ $(document).ready(function(){
         serial_close();
         new_port_id = "";   // Reset some variables
         source_id = -1;     // Reset some variables
-    });
-
-    $('#skip-to-check').on('click', function () {
-        show_step(5);
-        $('#upload-progress').addClass('progress_complete');
-        show_step(5);
-        show_serial_debug();
-
+        running = false;
     });
     
+    $('#skip-to-check').on('click', function () {
+        if( running == false ){
+            running = true;
+            $('#upload-progress').addClass('progress_complete');
+            $('#wizard-container').slideUp('fast');
+            show_step(5);
+            show_serial_debug();
+        }
+    });
     
     $('button.restart').on('click', function () {
         location.reload();
     });
     
+    $('#check-for-updates').on('click', function () {
+        update_sketches();
+    });
+    
     // Ask if a USB device has been plugged in.
     init();
-    
-    //setTimeout(poll_USB, 1000);
     
 });
 
@@ -62,6 +72,8 @@ function show_step(step_number){
     $("#content > div").removeClass("active");
     $("#content > #step" + step_number).addClass("active");
 }
+
+
 
 function init(){
     $.ajax({
@@ -74,20 +86,21 @@ function init(){
         },
         success: function(data){
             if(data == null){
-                console.log("Error: init function returned empty data.")
+                console.log("Error: init function returned empty data.");
             }
             console.log(data);
             if ( data.advanced == 1 ){
                 $('.advanced').show(); // Show all the advanced interface elements.    
             }
+            sketches_url = data.sketches_url;
             show_step(1);
             setInterval(poll_USB, 1000);
             $( "#wizard-container" ).slideDown("fast");
-            
         },
         timeout: 20000 // Sets timeout to 20 seconds.
     });
 }
+
 
 
 function poll_USB(){
@@ -112,7 +125,7 @@ function poll_USB(){
                 //}
             }
             else if ( json.state == "removed" && json.removed_port_ids != undefined){
-                console.log("USB device removed!")
+                console.log("USB device removed!");
                 if( json.removed_port_ids.indexOf(new_port_id) >= 0) { // If the current port is in the list of removed ports.
                     console.log("The targeted USB serial device is no longer available");
                     location.reload();
@@ -152,7 +165,7 @@ function generate_sources_list(){
         $("#sources-list > li").click(function(){
             //returnValue = ;
             console.log("clicked on " + $(this).text() );
-            $('#settings_device_name').text( $(this).text() )
+            $('#settings_device_name').text( $(this).text() );
             source_id = $(this).data('source-id');
             generate_settings_page(source_id);
             
@@ -161,6 +174,29 @@ function generate_sources_list(){
         // Finally, show the second step to the user
         $("ol.wizard.numeric").wizard('nextStep');
         show_step(2);
+    });
+}
+
+
+
+function update_sketches(){
+    console.log("Checking for updates to sketches, url:" + sketches_url);
+    $( "#sources-container" ).empty();
+    
+    $.ajax({
+        url: "/update_sketches",
+        type: "POST",
+        data: JSON.stringify(sketches_url),
+        contentType: "application/json; charset=utf-8",
+        success: function(data) {
+            console.log(data);
+        
+            if(data == null || data.success == undefined){
+                return;
+            }
+           
+            generate_sources_list();
+        }
     });
 }
 
@@ -183,15 +219,23 @@ function generate_settings_page(source_id){
             $("#settings-explanation-container").hide();
         }
         
+        item_counter = 0;
         // Generate Settings HTML
         if( data.settings.length > 0 ){
             $.each( data.settings, function( key, value ) {
                 console.log("at item:" + key);
                 if( key == 0){autofocus = "autofocus";}else{autofocus = "";}
-                if (value.type == "checkbox" && value.value == 1){checked = "checked";}else{checked = "";}
-                items.push( "<div class=\"form-item\"><label for=\"item" + key + "\">" + value.title + "</label><input type=" + value.type + " name=\"item" + key + "\" data-settings-form-id=" + key + " value=" + value.value +  " " + checked + " " + autofocus + "></div><p>" + value.comment + "</p>" );
+                if( value.type == "checkbox" && value.value == 1 ){ checked = "checked"; }else{ checked = ""; }
+                
+                if( value.type == "hr" ){
+                    items.push( "<br/><br/>");
+                }
+                else{
+                    items.push( "<div class=\"form-item\"><label for=\"item" + item_counter + "\">" + value.title + "</label><input type=" + value.type + " name=\"item" + item_counter + "\" data-settings-form-id=" + item_counter + " value=" + value.value +  " " + checked + " " + autofocus + "></div><p>" + value.comment + "</p>" );
+                    item_counter++;
+                }
             });
-
+            
             $( "<form/>", {
                 "id": "settings-form",
                 "class":"form",
@@ -219,7 +263,7 @@ function return_new_settings(){
     returnValues = [];
     $('#settings-form :input').each(function(index){
         if( $(this).is(':checkbox') ){
-            console.log("checkbox found")
+            console.log("checkbox found");
             if($(this).is(":checked")){
                 returnValue = 1;
             }
@@ -251,22 +295,29 @@ function return_new_settings(){
             
             console.log(data);
             if( data.success == true ){
-                console.log("Python received the new settings and was able to generate new code")
+                console.log("Python received the new settings and was able to generate new code");
                 $("ol.wizard.numeric").wizard('nextStep');
                 
                 $('#new-code').val(data.code);
+                
+                console.log("Added code to textarea");
+                //$("#new-code").linedtextarea(
+                //    {selectedLine: -1, selectedClass: 'lineselect'}
+                //);
+                
                 $('#code-container').removeClass('hidden');
                 show_step(4);
-                check_libraries()
+                check_libraries();
             }else{
                 $('#settings-errors').text("Unable to generate code from the settings you provided");
                 $('#settings-errors').show();
-                console.log("Python was unable to integrate the desired settings into the code")
+                console.log("Python was unable to integrate the desired settings into the code");
                 $('#step4 button.show.code, #new_code').addClass('hidden');
             }
         }
     });
 }
+
 
 
 function check_libraries(){
@@ -285,7 +336,7 @@ function check_libraries(){
         // Generate explanation HTML
         if( data.success == false ){
             console.log("ERROR. Something went wrong during libraries check:");
-            show_upload_errors(data.errors)
+            show_upload_errors(data.errors);
             $('#libraries-progress').addClass('progress_failed');
         }
         else{
@@ -303,19 +354,19 @@ function compile(){
     
     $.getJSON( "/compile/" + source_id, function( data ) {
         console.log(data);
-
+        
         if(data == null || data.message == undefined || data.success == undefined){
             lost_connection();
             return;
         }
-
+        
         $("#upload-status").text(data.message);
         
         // Generate explanation HTML
         if( data.success == false ){
             console.log("ERROR. Something went wrong during compiling:");
             $('#compile-progress').addClass('progress_failed');
-            show_upload_errors(data.errors)
+            show_upload_errors(data.errors);
         }
         else{
             console.log("Compile went ok");
@@ -324,6 +375,7 @@ function compile(){
         }
     });
 }
+
 
 
 function test_upload(){
@@ -342,15 +394,14 @@ function test_upload(){
                 lost_connection();
                 return;
             }
-
+            
             $("#upload-status").text(data.message);
-
-
+            
             // Generate explanation HTML
             if( data.success == false ){
                 console.log("ERROR. Something went wrong during the test upload.");
                 $('#test-progress').addClass('progress_failed');
-                show_upload_errors(data.errors)
+                show_upload_errors(data.errors);
             }
             else{
                 console.log("Test went ok, waiting 20 seconds before starting final upload.");
@@ -359,9 +410,7 @@ function test_upload(){
                     console.log("Starting upload now");
                     upload();
                 }, 20000);
-                
             }
-            
         }
     });
 }
@@ -370,8 +419,7 @@ function test_upload(){
 
 function upload(){
     console.log("Asking to start upload");
-
-
+    
     $.ajax({
         url: "/upload/" + source_id,
         type: "POST",
@@ -379,21 +427,20 @@ function upload(){
         contentType: "application/json; charset=utf-8",
         success: function(data) {
             console.log(data);
-            //var items = [];
-
+            
             if(data == null || data.message == undefined || data.success == undefined){
                 lost_connection();
                 return;
             }
-
+            
             $("#upload-status").text(data.message);
-
+            
             // Generate explanation HTML
             if( data.success == false ){
                 console.log("ERROR. Something went wrong during upload.");
                 console.log(data.errors);
                 $('#upload-progress').addClass('progress_failed');
-                show_upload_errors(data.errors)
+                show_upload_errors(data.errors);
             }
             else{
                 console.log("Upload went ok");
@@ -425,14 +472,15 @@ function show_upload_errors(errors){
         //console.log("at item:" + key);
         items.push( "<li><span class=\"error-number\">" + (key + 1) + "</span><span class=\"error-text\">" +  value + "</span></li>" );
     });
-
+    
     $( "<ul/>", {
         "id": "errors-list",
         html: items.join( "" )
     }).appendTo( "#errors-container" );
-
+    
     $('button.restart').removeClass('hidden');
 }
+
 
 
 function lost_connection(){
@@ -440,6 +488,7 @@ function lost_connection(){
     $("#upload-status").text("Lost connection to server");
     $("#upload-output").removeClass('hidden');
 }
+
 
 
 function show_serial_debug(){
@@ -483,7 +532,7 @@ function show_serial_debug(){
 
 function serial_close(){
     console.log("Requesting closure of serial port");
-
+    
     $('#serial-output-container').empty();
     
     // Send the new values back to the server (the add-on)
@@ -601,3 +650,119 @@ function string_to_color(str, options) {
     return this.shade(this.int_to_rgba(this.hash(str)), -10);
 
 }
+
+
+
+/**
+ * jQuery Lined Textarea Plugin 
+ *   http://alan.blog-city.com/jquerylinedtextarea.htm
+ *
+ * Copyright (c) 2010 Alan Williamson
+ * 
+ * Version: 
+ *    $Id: jquery-linedtextarea.js 464 2010-01-08 10:36:33Z alan $
+ *
+ * Released under the MIT License:
+ *    http://www.opensource.org/licenses/mit-license.php
+ * 
+ * Usage:
+ *   Displays a line number count column to the left of the textarea
+ *   
+ *   Class up your textarea with a given class, or target it directly
+ *   with JQuery Selectors
+ *   
+ *   $(".lined").linedtextarea({
+ *   	selectedLine: 10,
+ *    selectedClass: 'lineselect'
+ *   });
+ *
+ * History:
+ *   - 2010.01.08: Fixed a Google Chrome layout problem
+ *   - 2010.01.07: Refactored code for speed/readability; Fixed horizontal sizing
+ *   - 2010.01.06: Initial Release
+ *
+ */
+/*
+(function($) {
+
+	$.fn.linedtextarea = function(options) {
+		
+		// Get the Options
+		var opts = $.extend({}, $.fn.linedtextarea.defaults, options);
+		
+		
+		var fillOutLines = function(codeLines, h, lineNo){
+			while ( (codeLines.height() - h ) <= 0 ){
+				if ( lineNo == opts.selectedLine )
+					codeLines.append("<div class='lineno lineselect'>" + lineNo + "</div>");
+				else
+					codeLines.append("<div class='lineno'>" + lineNo + "</div>");
+				
+				lineNo++;
+			}
+			return lineNo;
+		};
+		
+		
+		return this.each(function() {
+			var lineNo = 1;
+			var textarea = $(this);
+			
+			textarea.attr("wrap", "off");
+			textarea.css({resize:'none'});
+			var originalTextAreaWidth	= textarea.outerWidth();
+            
+			textarea.wrap("<div class='linedtextarea'></div>");
+			var linedTextAreaDiv	= textarea.parent().wrap("<div class='linedwrap' style='width:" + originalTextAreaWidth + "px'></div>");
+			var linedWrapDiv 			= linedTextAreaDiv.parent();
+			
+			linedWrapDiv.prepend("<div class='lines' style='width:50px'></div>");
+			
+			var linesDiv	= linedWrapDiv.find(".lines");
+			linesDiv.height( textarea.height() + 6 );
+			
+			
+			linesDiv.append( "<div class='codelines'></div>" );
+			var codeLinesDiv	= linesDiv.find(".codelines");
+			lineNo = fillOutLines( codeLinesDiv, linesDiv.height(), 1 );
+            
+			if ( opts.selectedLine != -1 && !isNaN(opts.selectedLine) ){
+				var fontSize = parseInt( textarea.height() / (lineNo-2) );
+				var position = parseInt( fontSize * opts.selectedLine ) - (textarea.height()/2);
+				textarea[0].scrollTop = position;
+			}
+            
+			
+			var sidebarWidth					= linesDiv.outerWidth();
+			var paddingHorizontal 		= parseInt( linedWrapDiv.css("border-left-width") ) + parseInt( linedWrapDiv.css("border-right-width") ) + parseInt( linedWrapDiv.css("padding-left") ) + parseInt( linedWrapDiv.css("padding-right") );
+			var linedWrapDivNewWidth 	= originalTextAreaWidth - paddingHorizontal;
+			var textareaNewWidth			= originalTextAreaWidth - sidebarWidth - paddingHorizontal - 20;
+            
+			textarea.width( textareaNewWidth );
+			linedWrapDiv.width( linedWrapDivNewWidth );
+            
+			
+			textarea.scroll( function(tn){
+				var domTextArea		= $(this)[0];
+				var scrollTop 		= domTextArea.scrollTop;
+				var clientHeight 	= domTextArea.clientHeight;
+				codeLinesDiv.css( {'margin-top': (-1*scrollTop) + "px"} );
+				lineNo = fillOutLines( codeLinesDiv, scrollTop + clientHeight, lineNo );
+			});
+            
+            
+			textarea.resize( function(tn){
+				var domTextArea	= $(this)[0];
+				linesDiv.height( domTextArea.clientHeight + 6 );
+			});
+            
+		});
+	};
+
+  // default options
+  $.fn.linedtextarea.defaults = {
+  	selectedLine: -1,
+  	selectedClass: 'lineselect'
+  };
+})(jQuery);
+*/
