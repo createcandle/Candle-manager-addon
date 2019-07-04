@@ -2,7 +2,7 @@
 An add-on for the Mozilla WebThings Gateway. It allows you to upload code to Arduino's with the click of a button.
 
 0. Install the add-on and add the 'Create candle' thing that has now become available.
-1. CLick on the link icon of the thing.
+1. Click on the link icon of the thing.
 2. Plug in your Arduino via USB.
 3. Select which sketch you want to upload from the list. You can add your own sketches.
 4. Optional: change settings of your sketch if you want.
