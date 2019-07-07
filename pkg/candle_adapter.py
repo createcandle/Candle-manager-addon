@@ -1139,7 +1139,7 @@ class CandleAdapter(Adapter):
                 print("Error: no settings found for Candle Manager.")
                 return
             
-            print("Loading settings for Candle manager Config: " + str(config))
+            #print("Loading settings for Candle manager Config: " + str(config))
             
             if 'Sketches' in config:
                 self.json_sketches_url = str(config['Sketches'])
