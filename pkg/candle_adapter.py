@@ -287,6 +287,13 @@ class CandleAdapter(Adapter):
                 d = self.close_serial_port(data)
                 return jsonify(d)
 
+            @app.route('/close_tab') # If it's still open, close the serial port.
+            def app_serial_close():
+                if self.DEBUG:
+                    print("Closing Candle Manager browser tab")
+                d = self.closetab()
+                return jsonify(d)
+
 
             # Used to aid development
             @app.context_processor
@@ -1114,6 +1121,17 @@ class CandleAdapter(Adapter):
 
 
 
+    def close_tab(self):
+        result = {'success':True}
+        print("port id to close: " + str(port_id))
+        try:
+            os.system('reboot') # Pretty hardcore way of closing a tab, but it's the only way of do this while in fullscreen.
+        except Exception as e:
+            print("Error closing tab:" + str(e))
+            result['success'] = False
+        return result
+
+
 
     def unload(self):
         print("Shutting down adapter")
@@ -1211,9 +1229,13 @@ class CandleDevice(Device):
         Returns the state as a dictionary.
         """
         properties = {k: v.as_dict() for k, v in self.properties.items()}
+
+        if hasattr(self, 'name') and not self.title:
+            self.title = self.name
+
         return {
             'id': self.id,
-            'name': self.name,
+            'title': self.title,
             'type': self.type,
             '@context': self._context,
             '@type': self._type,
@@ -1235,9 +1257,12 @@ class CandleDevice(Device):
         Return the device state as a Thing Description.
         Returns the state as a dictionary.
         """
+        if hasattr(self, 'name') and not self.title:
+            self.title = self.name
+
         thing = {
             'id': self.id,
-            'name': self.name,
+            'title': self.title,
             'type': self.type,
             '@context': self._context,
             '@type': self._type,
