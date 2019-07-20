@@ -16,6 +16,11 @@ $(document).ready(function(){
     
     //var el = $("ol.wizard.numeric");
     
+    if( window.innerHeight == screen.height) {
+        // Browser is fullscreen, so we may need a way to close this tab. Javascript can't do that anymore, so instead we restart the entire Raspberry Pi..
+        $('#button-close-tab').removeClass('hidden'); 
+    }
+    
     $('#step3 button.back').on('click', function () {
         $("ol.wizard.numeric").wizard('previousStep');
         show_step(2);
@@ -59,7 +64,11 @@ $(document).ready(function(){
     $('#check-for-updates').on('click', function () {
         update_sketches();
     });
-    
+
+    $('#button-close-tab').on('click', function () {
+        close_tab();
+    });
+
     // Ask if a USB device has been plugged in.
     init();
     
@@ -558,6 +567,10 @@ function serial_close(){
     
 
 
+function close_tab(){
+    $.get( "/close_tab");
+}
+    
 
 
 
