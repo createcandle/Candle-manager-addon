@@ -288,10 +288,10 @@ class CandleAdapter(Adapter):
                 return jsonify(d)
 
             @app.route('/close_tab') # If it's still open, close the serial port.
-            def app_serial_close():
+            def app_close_tab():
                 if self.DEBUG:
                     print("Closing Candle Manager browser tab")
-                d = self.closetab()
+                d = self.close_tab()
                 return jsonify(d)
 
 
@@ -1123,9 +1123,9 @@ class CandleAdapter(Adapter):
 
     def close_tab(self):
         result = {'success':True}
-        print("port id to close: " + str(port_id))
+        print("Rebooting gateway in order to close a browser tab while in fullscreen..")
         try:
-            os.system('reboot') # Pretty hardcore way of closing a tab, but it's the only way of do this while in fullscreen.
+            os.system('sudo reboot now') # Pretty hardcore way of closing a tab, but it's the only way of do this while in fullscreen.
         except Exception as e:
             print("Error closing tab:" + str(e))
             result['success'] = False
@@ -1215,74 +1215,19 @@ class CandleDevice(Device):
         ]
         Device.__init__(self, adapter, 'candle-device')
         
+        self.links = [
+            {
+                "rel": "alternate",
+                "mediaType": "text/html",
+                "href": "http://gateway.local:8686/"
+            }
+        ]
+        
         self.adapter = adapter
 
-        self.name = 'Create Candle'
-        self.title = 'Create Candle'
-        self.description = 'Create Candle'
-
-
-
-    def as_dict(self):
-        """
-        Get the device state as a dictionary.
-        Returns the state as a dictionary.
-        """
-        properties = {k: v.as_dict() for k, v in self.properties.items()}
-
-        if hasattr(self, 'name') and not self.title:
-            self.title = self.name
-
-        return {
-            'id': self.id,
-            'title': self.title,
-            'type': self.type,
-            '@context': self._context,
-            '@type': self._type,
-            'description': self.description,
-            'properties': properties,
-            'actions': self.actions,
-            'events': self.events,
-            'links': self.links,
-            'baseHref': self.base_href,
-            'pin': {
-                'required': self.pin_required,
-                'pattern': self.pin_pattern,
-            },
-            'credentialsRequired': self.credentials_required,
-        }
-
-    def as_thing(self):
-        """
-        Return the device state as a Thing Description.
-        Returns the state as a dictionary.
-        """
-        if hasattr(self, 'name') and not self.title:
-            self.title = self.name
-
-        thing = {
-            'id': self.id,
-            'title': self.title,
-            'type': self.type,
-            '@context': self._context,
-            '@type': self._type,
-            'properties': self.get_property_descriptions(),
-            'links': self.links,
-            'baseHref': self.base_href,
-            'pin': {
-                'required': self.pin_required,
-                'pattern': self.pin_regex,
-            },
-            'credentialsRequired': self.credentials_required,
-        }
-
-        if self.description:
-            thing['description'] = self.description
-
-        return thing
-
-
-
+        self.name = 'Candle manager'
+        self.title = 'Candle manager'
+        self.description = 'Candle manager'
 
 
 
