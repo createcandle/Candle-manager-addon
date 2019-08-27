@@ -19,11 +19,15 @@ cp source/Candle_cleaner/Candle_cleaner.ino package/code/Candle_cleaner/Candle_c
 cp -r pkg LICENSE arduino-cli boards.txt package.json *.py requirements.txt setup.cfg package/
 find package -type f -name '*.pyc' -delete
 find package -type d -empty -delete
+echo "prepared the files in the package directory"
 
 # Generate checksums
 cd package
 sha256sum *.py pkg/*.py LICENSE requirements.txt setup.cfg > SHA256SUMS
 cd -
+echo "generated checksums"
 
 # Make the tarball
 tar czf "Candle-manager-${version}.tgz" package
+sha256sum "Candle-manager-${version}.tgz"
+
