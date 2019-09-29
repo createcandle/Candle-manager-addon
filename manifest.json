@@ -14,7 +14,7 @@
   "gateway_specific_settings": {
     "webthings": {
       "exec": "python3 {path}/main.py",
-      "primary_type": "extension",
+      "primary_type": "adapter",
       "strict_max_version": "*",
       "strict_min_version": "0.10.0"
     }
@@ -26,17 +26,19 @@
   "name": "Candle manager",
   "options": {
     "default": {
-      "Advanced": false,
+	  "Password": "changeme",
       "Arduino type": "Arduino Nano",
-      "Debug": false,
-      "Password": "changeme",
-      "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json"
+	  "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json",
+      "Advanced": false,
+      "Debug": false
+      
+      
     },
     "schema": {
       "properties": {
-        "Advanced": {
-          "description": "Advanced. Show the advanced interface? This will give you extra options and details.",
-          "type": "boolean"
+        "Password": {
+          "description": "A password for the security (encryption and/or signing) of the Candle/MySensors network. If you change this you will have to manually re-upload code to all your Candle/MySensors devices.",
+          "type": "string"
         },
         "Arduino type": {
           "description": "Advanced. What type of Arduino you will connect? The Candle project works with the Arduino Nano.",
@@ -47,17 +49,17 @@
           ],
           "type": "string"
         },
-        "Debug": {
-          "description": "Advanced. Enable this to see much more detail in the internal WebThings Gateway log about what this add-on is doing.",
-          "type": "boolean"
-        },
-        "Password": {
-          "description": "A password for the security (encryption and/or signing) of the Candle/MySensors network. If you change this you will have to manually re-upload code to all your Candle/MySensors devices.",
-          "type": "string"
-        },
         "Sketches": {
           "description": "Advanced. If you enter the URL of an Arduino sketch (.ino file) it will be downloaded and become available in the sketches list. You can also enter a link to a json file with multiple sketches.",
           "type": "string"
+        },
+        "Advanced": {
+          "description": "Advanced. Show the advanced interface? This will give you extra options and details.",
+          "type": "boolean"
+        },
+        "Debug": {
+          "description": "Advanced. Enable this to see much more detail in the internal WebThings Gateway log about what this add-on is doing.",
+          "type": "boolean"
         }
       },
       "required": [
