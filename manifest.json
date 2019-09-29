@@ -1,0 +1,62 @@
+{
+  "author": "CreateCandle",
+  "description": "Candle manager allows you to upload sketches to an Arduino.",
+  "gateway_specific_settings": {
+    "webthings": {
+      "exec": "python3 {path}/bootstrap.py",
+      "primary_type": "adapter",
+      "strict_max_version": "*",
+      "strict_min_version": "0.10.0"
+    }
+  },
+  "homepage_url": "https://github.com/createcandle/Candle-manager-addon",
+  "id": "Candle-manager-addon",
+  "license": "MPL-2.0",
+  "manifest_version": 1,
+  "name": "Candle manager",
+  "options": {
+    "default": {
+      "Advanced": false,
+      "Arduino type": "Arduino Nano",
+      "Debug": false,
+      "Password": "changeme",
+      "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json"
+    },
+    "schema": {
+      "properties": {
+        "Advanced": {
+          "description": "Advanced. Show the advanced interface? This will give you extra options and details.",
+          "type": "boolean"
+        },
+        "Arduino type": {
+          "description": "Advanced. What type of Arduino you will connect? The Candle project works with the Arduino Nano.",
+          "enum": [
+            "Arduino Nano",
+            "Arduino Uno",
+            "Arduino Mega"
+          ],
+          "type": "string"
+        },
+        "Debug": {
+          "description": "Advanced. Enable this to see much more detail in the internal WebThings Gateway log about what this add-on is doing.",
+          "type": "boolean"
+        },
+        "Password": {
+          "description": "A password for the security (encryption and/or signing) of the Candle/MySensors network. If you change this you will have to manually re-upload code to all your Candle/MySensors devices.",
+          "type": "string"
+        },
+        "Sketches": {
+          "description": "Advanced. If you enter the URL of an Arduino sketch (.ino file) it will be downloaded and become available in the sketches list. You can also enter a link to a json file with multiple sketches.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "Password",
+        "Arduino type"
+      ],
+      "type": "object"
+    }
+  },
+  "short_name": "Candle manag",
+  "version": "0.0.8"
+}
