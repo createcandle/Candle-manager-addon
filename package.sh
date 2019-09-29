@@ -16,15 +16,18 @@ mkdir package/code
 mkdir package/code/Candle_cleaner
 cp source/Candle_cleaner/Candle_cleaner.ino package/source/Candle_cleaner/Candle_cleaner.ino
 cp source/Candle_cleaner/Candle_cleaner.ino package/code/Candle_cleaner/Candle_cleaner.ino
-cp -r pkg LICENSE arduino-cli boards.txt package.json *.py requirements.txt setup.cfg package/
+
+cp *.py manifest.json package.json LICENSE README.md boards.txt requirements.txt setup.cfg  package/
+cp -r pkg linux darwin css images js views  package/
 find package -type f -name '*.pyc' -delete
 find package -type d -empty -delete
 echo "prepared the files in the package directory"
 
 # Generate checksums
 cd package
-sha256sum *.py pkg/*.py LICENSE requirements.txt setup.cfg > SHA256SUMS
-cd -
+find . -type f -exec sha256sum {} \; >> SHA256SUMS
+#sha256sum *.py pkg/*.py LICENSE requirements.txt setup.cfg > SHA256SUMS
+cd ..
 echo "generated checksums"
 
 # Make the tarball
