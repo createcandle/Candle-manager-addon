@@ -7,7 +7,9 @@
       this.content = '';
 	  //console.log("HELLO THERE CANDLE FANS");
 	  //console.log( ${this.id} );
-      fetch(`/extensions/${this.id}/views/content.html`)
+	  
+	  //fetch(`/extensions/${this.id}/views/content.html`)
+      fetch(`/extensions/Candle-manager-addon/views/content.html`)
         .then((res) => res.text())
         .then((text) => {
           this.content = text;
@@ -18,6 +20,7 @@
     show() {
       this.view.innerHTML = this.content;
 
+	  /*
       const key =
         document.getElementById('extension-Candle-manager-addon-form-key');
       const value =
@@ -44,8 +47,52 @@
           pre.innerText = e.toString();
         });
       });
+	  */
+	  
     }
   }
 
   new CandleManagerExtension();
+  console.log("HELLO THERE, I AM NORMAL JS");
+  
+  //var current_hostname = window.location.hostname;
+  //var flask_base = "http://" + current_hostname + ":8686";
+  //console.log(flask_base);
+  
+  function resizeIframe(obj) {
+      obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
+    }
+  
+  
+  function waitForElementToDisplay(selector, time) {
+  	if(document.querySelector(selector)!=null) {
+	  document.getElementById('extension-Candle-manager-addon-iframe').src = "http://" + window.location.hostname + ":8686";
+	  document.getElementById('extension-Candle-manager-addon-iframe').style.height = document.getElementById('extension-Candle-manager-addon-iframe').contentWindow.document.body.scrollHeight + 'px';
+      return;
+    }
+    else {
+      setTimeout(function() {
+        waitForElementToDisplay(selector, time);
+      }, time);
+    }
+  }
+  waitForElementToDisplay("#extension-Candle-manager-addon-iframe",100);
+  
+  
+  
+/*
+  function defer(method) {
+      if (window.jQuery) {
+          method();
+      } else {
+          setTimeout(function() { defer(method) }, 50);
+      }
+  }
+*/
+  
+//  defer(function(){
+//	  jQuery.getScript("/extensions/Candle-manager-addon/js/wizard.jquery.js")
+//	  jQuery.getScript("/extensions/Candle-manager-addon/js/main.js") 
+//  });
+  
 })();

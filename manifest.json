@@ -3,9 +3,12 @@
   "content_scripts": [
     {
       "css": [
-        "css/extension.css"
+        "css/extension.css",
+		"css/main.css",
+		"css/wizard.css"
       ],
       "js": [
+		"js/jquery-3.4.1.min.js",
         "js/extension.js"
       ]
     }
