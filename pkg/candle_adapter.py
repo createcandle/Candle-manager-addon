@@ -10,10 +10,13 @@ import asyncio
 import logging
 import urllib
 import requests
+import string
+import secrets
 #import urllib2
 import json
 import re
 import subprocess
+#from subprocess import STDOUT, check_output
 import threading
 #from threading import Timer
 import serial #as ser
@@ -24,7 +27,21 @@ from flask import Flask,Response, request,render_template,jsonify, url_for
 
 from gateway_addon import Adapter, Device, Database
 
-DAY = 86400
+
+try:
+    #from gateway_addon import APIHandler, APIResponse
+    from .api_handler import *
+except:
+    print("Your gateway version does not support this add-on.")
+
+
+
+
+
+
+
+
+DAY = 86400 # Seconds in a day
 
 _TIMEOUT = 3
 
@@ -58,20 +75,30 @@ class CandleAdapter(Adapter):
         self.adding_via_timer = False
         self.pairing = False
         self.name = self.__class__.__name__
-        Adapter.__init__(self, 'Candle-manager-addon', 'Candle-manager-addon', verbose=verbose)
+        self.adapter_name = 'Candle-manager-addon'
+        Adapter.__init__(self, self.adapter_name, self.adapter_name, verbose=verbose)
         #print("Adapter ID = " + self.get_id())
         
         print("paths:" + str(_CONFIG_PATHS))
         
-        for path in _CONFIG_PATHS:
-            if os.path.isdir(path):
-                self.persistence_file_path = os.path.join(
-                    path,
-                    'candle-adapter-persistence.json'
-                )
+        #for path in _CONFIG_PATHS:
+        #    if os.path.isdir(path):
+        #        self.persistence_file_path = os.path.join(
+        #            path,
+        #            'candle-adapter-persistence.json'
+        #        )
+        
+        
+        #self.persistence_path = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'addons','data',self.adapter_name)
+        #if not os.path.exists(directory):
+        #    os.makedirs(directory)
+        #self.persistence_file = os.path.join(self.persistence_path,'persistence.json')
+        
         
         self.add_on_path = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'addons','Candle-manager-addon')
         print("self.add_on_path = " + str(self.add_on_path))
+        self.arduino_cli_path = os.path.join(self.add_on_path, str(sys.platform))
+        print("self.arduino_cli_path = " + str(self.arduino_cli_path))
         
         self.DEBUG = False
         self.DEVELOPMENT = False
@@ -188,6 +215,23 @@ class CandleAdapter(Adapter):
             print("Set the Create Candle device to 'connected' state." + str(self.create_candle_device))
         except:
             print("Warning, could not set the Create Candle thing to 'connected' state.")
+        
+        
+        
+        #
+        # THE NEW WAY
+        #
+        
+        try:
+            self.extension = CandleManagerAPIHandler(self,verbose=True)
+            print("Extension API handler initiated")
+        except Exception as e:
+            print("Failed to start API handler " + str(e))
+        
+        
+        #
+        #  THE OLD WAY, CREATING A FLASK WEBSERVER
+        #
         
         try:
             # Flask webserver
@@ -314,7 +358,9 @@ class CandleAdapter(Adapter):
 
 
             #app.run(host="0.0.0.0", port=self.port, use_reloader=False, template_folder=template_folder, static_folder=static_folder)
+            
             app.run(host="0.0.0.0", port=self.port, use_reloader=False)
+            
             #threading.Thread(target=app.run).start()
         except Exception as e:
             print("Flask error: " + str(e))
@@ -326,7 +372,7 @@ class CandleAdapter(Adapter):
         
         # Updating Arduino CLI index
         try:
-            command = self.add_on_path + '/arduino-cli core update-index'
+            command = self.arduino_cli_path + '/arduino-cli core update-index'
             for line in run_command(command):
                 if self.DEBUG:
                     print(line)
@@ -343,7 +389,7 @@ class CandleAdapter(Adapter):
         # Downloading latest version of AVR for Arduino CLI, which allows it to work with the Arduino Nano, Uno and Mega
         if index_updated:
             try:
-                command = self.add_on_path + '/arduino-cli core install arduino:avr'
+                command = self.arduino_cli_path + '/arduino-cli core install arduino:avr'
                 for line in run_command(command):
                     if self.DEBUG:
                         print(line)
@@ -361,16 +407,22 @@ class CandleAdapter(Adapter):
 
     def check_installed_arduino_libraries(self):
         try:
-            #command = self.add_on_path + '/arduino-cli lib list --all --format=json' # perhaps use os.path.join(self.add_on_path, 'arduino-cli') + 'lib list --all --format=json' ?
-            command = os.path.join(self.add_on_path, 'arduino-cli') + ' lib list --all --format=json'
-            installed_libraries_response = json.loads(run_command_json(command))
-
-            for lib_object in installed_libraries_response['libraries']:
-                print("Found library: " + str(lib_object['library']['Properties']['name']))
-                #try:
-                self.installed_libraries.add(str(lib_object['library']['Properties']['name']))
-                #except Exception as e:
-                #    print("Could not add library to list of installed libraries: " + str(e))
+            #command = self.arduino_cli_path + '/arduino-cli lib list --all --format=json' # perhaps use os.path.join(self.add_on_path, 'arduino-cli') + 'lib list --all --format=json' ?
+            command = os.path.join(self.arduino_cli_path, 'arduino-cli') + ' lib list --all --format=json'
+            command_output = run_command_json(command,10) # Sets a time limit for how long the command can take.
+            #print("Installed arduino libs command_output: " + str(command_output))
+            if command_output != None:
+                installed_libraries_response = json.loads(command_output)
+                #print("installed_libraries_response = " + str(installed_libraries_response))
+                #for lib_object in installed_libraries_response['libraries']:
+                for lib_object in installed_libraries_response:
+                    #print("Found library: " + str(lib_object['library'])) #)['Properties']['name']))
+                    if self.DEBUG:
+                        print("Found library: " + str(lib_object['library']['name']))
+                    #try:
+                    self.installed_libraries.add(str(lib_object['library']['name']))
+                    #except Exception as e:
+                    #    print("Could not add library to list of installed libraries: " + str(e))
         except Exception as e:
             print("Failed to check libraries: " + str(e))
     
@@ -882,7 +934,7 @@ class CandleAdapter(Adapter):
                 for library_name in self.required_libraries:
                     if str(library_name) not in self.installed_libraries:
                         print("DOWNLOADING: " + str(library_name))
-                        command = self.add_on_path + '/arduino-cli lib install "' + str(library_name) + '"'
+                        command = self.arduino_cli_path + '/arduino-cli lib install "' + str(library_name) + '"'
                         for line in run_command(command):
                             if self.DEBUG:
                                 print(line)
@@ -918,7 +970,7 @@ class CandleAdapter(Adapter):
                 return result
 
 
-            command = self.add_on_path + '/arduino-cli compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
+            command = self.arduino_cli_path + '/arduino-cli compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
             for line in run_command(command):
                 #line = line.decode('utf-8')
                 if self.DEBUG:
@@ -1003,7 +1055,7 @@ class CandleAdapter(Adapter):
                 print("Code name: " + str(source_name))
             path = str(self.add_on_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
 
-            command = self.add_on_path + '/arduino-cli upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
+            command = self.arduino_cli_path + '/arduino-cli upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
             if self.DEVELOPMENT:
                 print("Arduino CLI command = " + str(command))
             for line in run_command(command):
@@ -1166,8 +1218,49 @@ class CandleAdapter(Adapter):
                 print("-No Arduino sketch(es) URL found in the code.")
             
             if 'Password' in config:
-                self.simple_password = str(config['Password'])
                 print("-Password found in settings")
+                self.simple_password = str(config['Password'])
+                
+                if self.simple_password == "changeme":
+                    try:
+                        #alphabet = string.ascii_letters + string.digits
+                        #better_password = ''.join(secrets.choice(alphabet) for i in range(8))
+                        
+                        #try:
+                            # Try to generate an even better password.
+                        alphabet = string.ascii_letters + string.digits
+                        while True:
+                            better_password = ''.join(secrets.choice(alphabet) for i in range(8))
+                            if (any(c.islower() for c in better_password)
+                                    and any(c.isupper() for c in better_password)
+                                    and sum(c.isdigit() for c in better_password) >= 2):
+                                break
+                        #except:
+                            #pass
+                            
+                        print(str(better_password))
+                        config['Password'] = better_password
+                    
+                        # Store the better password.
+                        print("Storing overridden settings")
+                        try:
+                            database = Database('Candle-manager-addon')
+                            if not database.open():
+                                print("Error, could not open settings database to store better password.")
+                                #return
+                            else:
+                                database.save_config(config)
+                                database.close()
+                                print("-The password was changeme, so a better password was generated and stored in settings.")
+                        
+                        except:
+                            print("Error! Failed to store better password in database.")
+                    except Exception as e:
+                        print("Error generating better password: " + str(e))
+                    
+                    
+                    
+                
             else:
                 print("-No Password found in settings")
                 
@@ -1237,13 +1330,31 @@ def remove_prefix(text, prefix):
     return text  # or whatever
 
 
-def run_command(command):
+def run_command(cmd, timeout_seconds=60):
     try:
-        p = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            shell=True)
+        
+        p = subprocess.run(cmd, timeout=timeout_seconds, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, universal_newlines=True)
+
+        if p.returncode == 0:
+            return p.stdout #.decode('utf-8')
+            yield("Command success")
+        else:
+            if p.stderr:
+                return "Error: " + str(p.stderr)  #.decode('utf-8'))
+                yield("Command failed")
+                #Style.error('Preprocess failed: ')
+                #print(result.stderr)
+        
+        
+        
+        
+        #p = subprocess.Popen(command,
+        #                    stdout=subprocess.PIPE,
+        #                    stderr=subprocess.PIPE,
+        #                    timeout=timeout_seconds,
+        #                    shell=True)
         # Read stdout from subprocess until the buffer is empty !
+        """
         for bline in iter(p.stdout.readline, b''):
             line = bline.decode('ASCII') #decodedLine = lines.decode('ISO-8859-1')
             if line: # Don't print blank lines
@@ -1262,24 +1373,40 @@ def run_command(command):
                 yield("Error: " + str(err.decode('utf-8')))
             yield("Command failed")
             #return false
-    except:
-        print("Error running Arduino CLI command")
+        """
+    except Exception as e:
+        print("Error running Arduino CLI command: "  + str(e))
         
-def run_command_json(cmd):
+def run_command_json(cmd, timeout_seconds=60):
     try:
-        process = subprocess.Popen(
-            cmd,
-            shell=True,
-            stdout=subprocess.PIPE)
-        process.wait()
-        data, err = process.communicate()
-        if process.returncode is 0:
-            return data.decode('utf-8')
+        
+        result = subprocess.run(cmd, timeout=timeout_seconds, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, universal_newlines=True)
+
+        if result.returncode == 0:
+            return result.stdout #.decode('utf-8')
         else:
-            return "Error: " + str(err.decode('utf-8'))
+            if result.stderr:
+                return "Error: " + str(result.stderr)  #.decode('utf-8'))
+                #Style.error('Preprocess failed: ')
+                #print(result.stderr)
+        
+        
+        #subprocess.run(cmd, timeout=5)
+        
+        #process = subprocess.Popen(
+        #    cmd,
+        #    shell=True,
+        #    timeout=timeout_seconds,
+        #    stdout=subprocess.PIPE)
+        #process.wait()
+        #data, err = process.communicate()
+        #if process.returncode is 0:
+        #    return data.decode('utf-8')
+        #else:
+        #    return "Error: " + str(err.decode('utf-8'))
             #print("Error exit code:", err.decode('utf-8'))
-    except:
-        print("Error running Arduino CLI command")
+    except Exception as e:
+        print("Error running Arduino JSON CLI command: "  + str(e))
         
 def split_sentences(st):
     sentences = re.split(r'[.?!]\s*', st)
