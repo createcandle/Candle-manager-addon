@@ -16,16 +16,18 @@ class CandleManagerAPIHandler(APIHandler):
             '..',
             'manifest.json'
         )
-
+        
         self.adapter = adapter
+        print("ext: self.adapter = " + str(self.adapter))
 
         with open(manifest_fname, 'rt') as f:
             manifest = json.load(f)
 
         APIHandler.__init__(self, manifest['id'])
-        self.manager_proxy.add_api_handler(self)
-        print(">>>>>> Created new API HANDLER <<<<<<<<<")
-        print(str(manifest['id']))
+        self.adapter.manager_proxy.add_api_handler(self)
+        
+        print(">>>>>> Created new API HANDLER: " + str(manifest['id']) + " <<<<<<<<<")
+
 
     def handle_request(self, request):
         """

@@ -223,7 +223,8 @@ class CandleAdapter(Adapter):
         #
         
         try:
-            self.extension = CandleManagerAPIHandler(self,verbose=True)
+            self.extension = CandleManagerAPIHandler(self, verbose=True)
+            #self.manager_proxy.add_api_handler(self.extension)
             print("Extension API handler initiated")
         except Exception as e:
             print("Failed to start API handler " + str(e))
@@ -373,16 +374,20 @@ class CandleAdapter(Adapter):
         # Updating Arduino CLI index
         try:
             command = self.arduino_cli_path + '/arduino-cli core update-index'
-            for line in run_command(command):
-                if self.DEBUG:
-                    print(line)
+            print("ARDUINO UPDATE COMMAND = " + str(command))
+            
+            #bla = run_command(command).splitlines()
+            #print("bla = " + str(bla))
+            for line in run_command(command).splitlines():
+                #if self.DEBUG:
+                print(line)
                 if line.startswith('Command failed'):
                     print("CLI update index failed")
                 elif line.startswith('Command success'):
                     if self.DEBUG:
                         print("CLI update index success")
                     index_updated = True
-                time.sleep(.1)
+                #time.sleep(.1)
         except Exception as e:
             print("Error sending Arduino CLI update index command: " + str(e))
             
@@ -390,7 +395,7 @@ class CandleAdapter(Adapter):
         if index_updated:
             try:
                 command = self.arduino_cli_path + '/arduino-cli core install arduino:avr'
-                for line in run_command(command):
+                for line in run_command(command).splitlines():
                     if self.DEBUG:
                         print(line)
                     if line.startswith('Command failed'):
@@ -399,7 +404,7 @@ class CandleAdapter(Adapter):
                         if self.DEBUG:
                             print("CLI update AVR success")
                         success = True
-                    time.sleep(.1)
+                    #time.sleep(.1)
             except Exception as e:
                 print("Error sending Arduino CLI update AVR command: " + str(e))
         return success
@@ -470,7 +475,7 @@ class CandleAdapter(Adapter):
                 
                 #if self.DEBUG:
                 #    print("target_dir  = " + str(target_dir))
-                print("Downloading: " + str(target_file) + ".ino")
+                print("Downloading: " + str(target_file))
                 
                 attempts = 0
                 while attempts < 3:
@@ -935,7 +940,7 @@ class CandleAdapter(Adapter):
                     if str(library_name) not in self.installed_libraries:
                         print("DOWNLOADING: " + str(library_name))
                         command = self.arduino_cli_path + '/arduino-cli lib install "' + str(library_name) + '"'
-                        for line in run_command(command):
+                        for line in run_command(command).splitlines():
                             if self.DEBUG:
                                 print(line)
                             if line.startswith( 'Error' ):
@@ -945,7 +950,7 @@ class CandleAdapter(Adapter):
                             elif line.startswith('Command success'):
                                 result["message"] = "Installed library succesfully. Next step is actual upload."
                                 result["success"] = True
-                            time.sleep(.1)
+                            #time.sleep(.1)
         except Exception as e:
             print("Error while trying to download new required libraries: " + str(e))
         
@@ -971,7 +976,7 @@ class CandleAdapter(Adapter):
 
 
             command = self.arduino_cli_path + '/arduino-cli compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
-            for line in run_command(command):
+            for line in run_command(command).splitlines():
                 #line = line.decode('utf-8')
                 if self.DEBUG:
                     print(line)
@@ -985,7 +990,7 @@ class CandleAdapter(Adapter):
                     result["message"] = "Compiled succesfully."
                     result["success"] = True
 
-                time.sleep(.1)
+                #time.sleep(.1)
         except Exception as e:
             print("Error during compiling: " + str(e))
 
@@ -1058,7 +1063,7 @@ class CandleAdapter(Adapter):
             command = self.arduino_cli_path + '/arduino-cli upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
             if self.DEVELOPMENT:
                 print("Arduino CLI command = " + str(command))
-            for line in run_command(command):
+            for line in run_command(command).splitlines():
                 if line.startswith( 'Error' ) and not line.startswith( 'Error: exit status 1' ) and not line.startswith( 'Error during upload' ):
                     #if not self.DEBUG:
                     print(line)
@@ -1070,7 +1075,7 @@ class CandleAdapter(Adapter):
                 if line.startswith('Command success'):
                     result["message"] = "Uploaded succesfully."
                     result["success"] = True
-                time.sleep(.1)
+                #time.sleep(.1)
         except Exception as e:
             print("Error during upload process: " + str(e))
                 
@@ -1336,12 +1341,12 @@ def run_command(cmd, timeout_seconds=60):
         p = subprocess.run(cmd, timeout=timeout_seconds, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, universal_newlines=True)
 
         if p.returncode == 0:
-            return p.stdout #.decode('utf-8')
-            yield("Command success")
+            return p.stdout  + '\n' + "Command success" #.decode('utf-8')
+            #yield("Command success")
         else:
             if p.stderr:
-                return "Error: " + str(p.stderr)  #.decode('utf-8'))
-                yield("Command failed")
+                return "Error: " + str(p.stderr)  + '\n' + "Command failed"   #.decode('utf-8'))
+                #yield("Command failed")
                 #Style.error('Preprocess failed: ')
                 #print(result.stderr)
         
