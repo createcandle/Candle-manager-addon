@@ -4,11 +4,11 @@
     {
       "css": [
         "css/extension.css",
-		"css/main.css",
-		"css/wizard.css"
+        "css/main.css",
+        "css/wizard.css"
       ],
       "js": [
-		"js/jquery-3.4.1.min.js",
+        "js/jquery-3.4.1.min.js",
         "js/extension.js"
       ]
     }
@@ -29,13 +29,11 @@
   "name": "Candle manager",
   "options": {
     "default": {
-	  "Password": "changeme",
+    "Password": "changeme",
       "Arduino type": "Arduino Nano",
-	  "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json",
+      "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json",
       "Advanced": false,
       "Debug": false
-      
-      
     },
     "schema": {
       "properties": {
@@ -77,7 +75,7 @@
   "web_accessible_resources": [
     "css/*.css",
     "images/*.svg",
-	"images/candle_logo_simple.png",
+    "images/candle_logo_simple.png",
     "js/*.js",
     "views/*.html"
   ]
