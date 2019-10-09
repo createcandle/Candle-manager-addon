@@ -1,8 +1,11 @@
 """Example API handler."""
 
 from gateway_addon import APIHandler, APIResponse
+import functools
 import json
 import os
+
+print = functools.partial(print, flush=True)
 
 
 class CandleManagerAPIHandler(APIHandler):

@@ -1,2 +1,4 @@
-lib/
 *.pyc
+/lib/
+/source/
+!/source/Candle_cleaner/

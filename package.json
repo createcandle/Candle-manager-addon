@@ -31,11 +31,11 @@
     "requirements.txt",
     "boards.txt",
     "linux/arduino-cli",
-	"darwin/arduino-cli",
-	"css/*",
-	"js/*",
-	"images/*",
-	"views/*",
+    "darwin/arduino-cli",
+    "css/*",
+    "js/*",
+    "images/*",
+    "views/*",
     "pkg/static/css/main.css",
     "pkg/static/css/wizard.css",
     "pkg/static/js/jquery-3.4.1.min.js",
@@ -45,7 +45,7 @@
     "pkg/templates/index.html",
     "source/Candle_cleaner/Candle_cleaner.ino",
     "code/Candle_cleaner/Candle_cleaner.ino",
-	"manifest.json"
+    "manifest.json"
   ],
   "moziot": {
     "api": {
@@ -56,7 +56,7 @@
     "exec": "python3 {path}/bootstrap.py",
     "config": {
       "Password": "changeme",
-       "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json",
+      "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json",
       "Arduino type": "Arduino Nano",
       "Advanced": false,
       "Debug": false
