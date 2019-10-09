@@ -22,6 +22,7 @@
     "url": "https://github.com/createcandle/Candle-manager-addon/issues"
   },
   "files": [
+    "manifest.json",
     "LICENSE",
     "SHA256SUMS",
     "bootstrap.py",
@@ -32,10 +33,16 @@
     "boards.txt",
     "linux/arduino-cli",
     "darwin/arduino-cli",
-    "css/*",
-    "js/*",
-    "images/*",
-    "views/*",
+    "css/main.css",
+	"css/extension.css",
+	"css/wizard.css",
+    "js/extension.js",
+	"js/main.js",
+	"js/jquery-3.4.1.min.js",
+	"js/wizard.jquery.js",
+    "images/candle_logo_simple.png",
+	"images/menu-icon.svg",
+    "views/content.html",
     "pkg/static/css/main.css",
     "pkg/static/css/wizard.css",
     "pkg/static/js/jquery-3.4.1.min.js",
@@ -44,8 +51,7 @@
     "pkg/static/images/candle_logo_simple.png",
     "pkg/templates/index.html",
     "source/Candle_cleaner/Candle_cleaner.ino",
-    "code/Candle_cleaner/Candle_cleaner.ino",
-    "manifest.json"
+    "code/Candle_cleaner/Candle_cleaner.ino"
   ],
   "moziot": {
     "api": {
