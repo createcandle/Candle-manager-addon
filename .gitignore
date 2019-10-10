@@ -1,4 +1,6 @@
 *.pyc
+*.tgz
 /lib/
+/package/
 /source/
 !/source/Candle_cleaner/

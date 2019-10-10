@@ -25,12 +25,12 @@ echo "prepared the files in the package directory"
 
 # Generate checksums
 cd package
-find . -type f -exec sha256sum {} \; >> SHA256SUMS
+find . -type f \! -name SHA256SUMS -exec sha256sum {} \; >> SHA256SUMS
 #sha256sum *.py pkg/*.py LICENSE requirements.txt setup.cfg > SHA256SUMS
 cd ..
 echo "generated checksums"
 
 # Make the tarball
-tar czf "Candle-manager-${version}.tgz" package
-sha256sum "Candle-manager-${version}.tgz"
+tar czf "Candle-manager-addon-${version}.tgz" package
+sha256sum "Candle-manager-addon-${version}.tgz"
 
