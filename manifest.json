@@ -70,7 +70,7 @@
       "type": "object"
     }
   },
-  "short_name": "Candle manager",
+  "short_name": "Candle Mgr",
   "version": "0.0.8",
   "web_accessible_resources": [
     "css/*.css",
