@@ -20,7 +20,7 @@ div.wizard-container .wizard.numeric li {
   display: table-cell;
 }
 div.wizard-container .wizard.numeric li span {
-  color: #999;
+  color: #333;
   border: 3px solid #d6d6d6;
   border-radius: 50px;
   text-align: center;
@@ -48,7 +48,7 @@ div.wizard-container .wizard.numeric li.active span {
 }
 div.wizard-container .wizard.numeric li:not(.active) div {
   bottom: 3px;
-  color: #999;
+  color: #555;
   font-size: 14px;
 }
 div.wizard-container .wizard.numeric li:last-child {
