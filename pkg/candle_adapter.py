@@ -10,6 +10,7 @@ import asyncio
 import logging
 import urllib
 import requests
+import socket
 import string
 import secrets
 #import urllib2
@@ -31,8 +32,9 @@ from gateway_addon import Adapter, Device, Database
 try:
     #from gateway_addon import APIHandler, APIResponse
     from .api_handler import *
+    print("CandleManagerAPIHandler imported.")
 except:
-    print("Your gateway version does not support this add-on.")
+    print("Unable to load CandleManagerAPIHandler (which is used for UX extention)")
 
 
 
@@ -120,13 +122,14 @@ class CandleAdapter(Adapter):
         try:
             device = CandleDevice(self)
             self.handle_device_added(device)
+            print("Created the Candle Manager thing")
         except:
-            print("Error: unable to create the 'Create Candle' thing. You can try to manually open this URL in your browser: http://gateway.local:" + str(self.port))
+            print("Error: unable to create the Candle Manager thing. You can try to manually open this URL in your browser: http://gateway.local:" + str(self.port))
 
         try:
             #self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
             self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
-            print(str(self.create_candle_device))
+            print("self.create_candle_device = " + str(self.create_candle_device))
             if str(self.create_candle_device) != 'None':
                 self.create_candle_device.connected_notify(False)
                 if self.DEBUG:
@@ -134,7 +137,7 @@ class CandleAdapter(Adapter):
             else:
                 print("Warning: Create Candle thing does not exist.")
         except:
-            print("Warning: unable to set the Create Candle thing status to 'not connected'.")
+            print("Error: unable to set the Create Candle thing status to 'not connected'.")
 
         
         # Scan sources directory
@@ -214,7 +217,7 @@ class CandleAdapter(Adapter):
             self.create_candle_device.connected_notify(True)
             print("Set the Create Candle device to 'connected' state." + str(self.create_candle_device))
         except:
-            print("Warning, could not set the Create Candle thing to 'connected' state.")
+            print("Warning, could not set the Candle Manager thing to 'connected' state.")
         
         
         
@@ -227,7 +230,7 @@ class CandleAdapter(Adapter):
             #self.manager_proxy.add_api_handler(self.extension)
             print("Extension API handler initiated")
         except Exception as e:
-            print("Failed to start API handler " + str(e))
+            print("Failed to start API handler (this only works on gateway version 0.10 or higher). Error: " + str(e))
         
         
         #
@@ -395,7 +398,7 @@ class CandleAdapter(Adapter):
         if index_updated:
             try:
                 command = self.arduino_cli_path + '/arduino-cli core install arduino:avr'
-                for line in run_command(command).splitlines():
+                for line in run_command(command,120).splitlines():
                     if self.DEBUG:
                         print(line)
                     if line.startswith('Command failed'):
@@ -1243,7 +1246,9 @@ class CandleAdapter(Adapter):
                         #except:
                             #pass
                             
-                        print(str(better_password))
+                        
+                        #print("Generated a better password")
+                        #print(str(better_password))
                         config['Password'] = better_password
                     
                         # Store the better password.
@@ -1303,30 +1308,37 @@ class CandleDevice(Device):
 
         adapter -- the Adapter managing this device
         """
-
-        self.links = [
-            {
-                "rel": "alternate",
-                "mediaType": "text/html",
-                "href": "http://gateway.local:8686/"
-            }
-        ]
-        Device.__init__(self, adapter, 'candle-device')
         
-        self.links = [
-            {
-                "rel": "alternate",
-                "mediaType": "text/html",
-                "href": "http://gateway.local:8686/"
-            }
-        ]
+        try:
+            lan_ip = get_ip()
+            full_lan_path = "http://" + str(lan_ip) + ":8686/"
+            print("Path to Candle manager server = " + str(full_lan_path))
+
+
+            self.links = [
+                {
+                    "rel": "alternate",
+                    "mediaType": "text/html",
+                    "href": full_lan_path
+                }
+            ]
+            Device.__init__(self, adapter, 'candle-device')
         
-        self.adapter = adapter
+            self.links = [
+                {
+                    "rel": "alternate",
+                    "mediaType": "text/html",
+                    "href": full_lan_path
+                }
+            ]
+        
+            self.adapter = adapter
 
-        self.name = 'Candle manager'
-        self.title = 'Candle manager'
-        self.description = 'Candle manager'
-
+            self.name = 'Candle manager'
+            self.title = 'Candle manager'
+            self.description = 'Candle manager'
+        except Exception as e:
+            print("Error generating better password: " + str(e))
 
 
 def remove_prefix(text, prefix):
@@ -1420,3 +1432,15 @@ def split_sentences(st):
     else:
         return sentences[:-1]
         
+
+def get_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except:
+        IP = 'gateway.local'
+    finally:
+        s.close()
+    return IP
