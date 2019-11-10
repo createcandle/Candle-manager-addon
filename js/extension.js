@@ -5,20 +5,28 @@
       this.addMenuEntry('Candle manager');
 
       this.content = '';
-	  //console.log("HELLO THERE CANDLE FANS");
-	  //console.log( ${this.id} );
+			//this.empty = '';
+	  	//console.log("HELLO THERE CANDLE FANS");
+	  	//console.log( ${this.id} );
 	  
-	  //fetch(`/extensions/${this.id}/views/content.html`)
+	  	//fetch(`/extensions/${this.id}/views/content.html`)
       fetch(`/extensions/Candle-manager-addon/views/content.html`)
         .then((res) => res.text())
         .then((text) => {
           this.content = text;
         })
         .catch((e) => console.error('Failed to fetch content:', e));
+				
+	
+			this.view.innerHTML = this.content;
+	
     }
 
     show() {
+			console.log("Candle manager received show command.");
+			//console.log(this.content);
       this.view.innerHTML = this.content;
+	  	//waitForElementToDisplay("#extension-Candle-manager-addon-iframe",100);
 
 	  /*
       const key =
@@ -50,34 +58,53 @@
 	  */
 	  
     }
+		hide(){
+	      console.log("Candle manager received hide command");
+		}
   }
 
   new CandleManagerExtension();
-  console.log("HELLO THERE, I AM NORMAL JS");
-  
+  console.log("Initialising Candle Manager add-on");
+  candleManagerCheckLoop(500); // the main function that loads of unloads the iframe.
   //var current_hostname = window.location.hostname;
   //var flask_base = "http://" + current_hostname + ":8686";
   //console.log(flask_base);
   
   function resizeIframe(obj) {
-      obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
-    }
-  
-  
-  function waitForElementToDisplay(selector, time) {
-  	if(document.querySelector(selector)!=null) {
-	  document.getElementById('extension-Candle-manager-addon-iframe').src = "http://" + window.location.hostname + ":8686";
-	  document.getElementById('extension-Candle-manager-addon-iframe').style.height = document.getElementById('extension-Candle-manager-addon-iframe').contentWindow.document.body.scrollHeight + 'px';
-      return;
-    }
-    else {
-      setTimeout(function() {
-        waitForElementToDisplay(selector, time);
-      }, time);
-    }
+    obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
   }
-  waitForElementToDisplay("#extension-Candle-manager-addon-iframe",100);
   
+  function candleManagerCheckLoop(time){
+  	var candle_manager_section = document.getElementById("extension-Candle-manager-addon-view");
+		var style = window.getComputedStyle(candle_manager_section);
+    if ( typeof this.loaded == 'undefined' ) {
+        // It has not... perform the initialization
+        this.loaded = false;
+    }
+
+		//var ready_to_load = true;
+		if( style.display === 'none' ){
+			// If the Candle Manager view is actually visible
+		  console.log("Unloading the Candle manager.");
+		  //document.getElementById('extension-Candle-manager-addon-iframe').src = "about:blank";
+			candle_manager_section.innerHTML = '';
+			this.loaded = false;
+		}
+		else{
+			//console.log("Candle manager is visible");
+			if(this.loaded == false){
+				console.log("Loading the Candle Manager iframe");
+				document.getElementById('extension-Candle-manager-addon-iframe').src = "http://" + window.location.hostname + ":8686";
+				this.loaded = true;
+			}
+		}
+		
+    setTimeout(function() {
+      candleManagerCheckLoop(time);
+    }, time);
+		
+  }
+	
   
   
 /*
