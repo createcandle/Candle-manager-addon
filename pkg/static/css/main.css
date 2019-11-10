@@ -4,8 +4,11 @@ body{
     font-family: 'Montserrat', 'Helvetica', 'Arial', sans-serif;
     color: #343434;
     line-height: 1.4rem;
+		margin:0;
 }
 
+
+.advanced{display:none;}
 
 #container {
     display: flex;
@@ -15,10 +18,12 @@ body{
 
 
 #centered{
-    width:70%;
-    min-height:600px;
-    min-width:600px;
+    width:100%;
+    /*min-height:600px;
+    min-width:600px;*/
 }
+
+
 
 #logo-container{
     margin-bottom:2rem;
@@ -34,8 +39,9 @@ body{
     background-color:#bbb;
     color:white;
     border-radius:1rem;
-    padding:3rem;
+    padding:1rem;
 }
+
 
 #content > div {
     display:none;
@@ -58,6 +64,7 @@ body{
     margin-bottom:.5rem;
     border-radius:.5rem;
     cursor: pointer;
+	word-wrap:break-word;
 }
 
 #sources-list{
@@ -76,7 +83,7 @@ div.two.colums > div{
 
 #settings-container{
     width:100%;
-    min-width:400px;
+    min-width:240px;
 }
 
 form{
@@ -89,6 +96,7 @@ form{
 
 div.form-item {
     display: flex;
+	flex-flow: wrap;
     align-items: center;
     margin-top:2rem;
     padding-top: 1rem;
@@ -195,6 +203,29 @@ button{
     border:2px solid red;
     background-color: red;
 }
+
+
+
+
+@-webkit-keyframes move {
+    0% {
+       background-position: 0 0;
+    }
+    100% {
+       background-position: 50px 50px;
+    }
+}
+
+@-moz-keyframes move {
+    0% {
+       background-position: 0 0;
+    }
+    100% {
+       background-position: 50px 50px;
+    }
+}
+
+
 #upload-progress_bar > div.progress_complete{
     background-position:left bottom;
     transition:all 2s ease;
@@ -225,6 +256,8 @@ button{
     background-size: 50px 50px;
     -webkit-animation: move 2s linear infinite;
     -moz-animation: move 2s linear infinite;
+		animation: move 2s linear infinite;
+		
     /*
     -webkit-border-top-right-radius: 8px;
     -webkit-border-bottom-right-radius: 8px;
@@ -336,6 +369,19 @@ ul,
     width:100%;
     min-height:500px;
     border:none;
+}
+
+
+
+
+@media screen and (min-width: 900px) {
+	#centered{
+		width:70%;
+	}
+	
+	#content{
+		padding:3rem;
+	}
 }
 
 
@@ -463,29 +509,8 @@ ul,
         display:block;
     }
 }
-    
- 
-}
 
 
-
-@-webkit-keyframes move {
-    0% {
-       background-position: 0 0;
-    }
-    100% {
-       background-position: 50px 50px;
-    }
-}
-
-@-moz-keyframes move {
-    0% {
-       background-position: 0 0;
-    }
-    100% {
-       background-position: 50px 50px;
-    }
-}
 
 
 
