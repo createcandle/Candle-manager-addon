@@ -168,9 +168,13 @@ class CandleAdapter(Adapter):
             
         # Get JSON list of already installed Arduino libraries
         print("Looking for already installed libraries")
-        self.required_libraries = set()
+        self.required_libraries = set(["MySensors", "SSD1306Ascii", "Grove - Barometer Sensor BME280"]) # some hardcoded libraries that are required
         self.installed_libraries = set()
         self.check_installed_arduino_libraries()
+            
+        # Pre-download the required libraries
+        self.check_libraries(0)
+        
             
         # Pre-compile the cleaner code
         self.cleaner_pre_compiled = False
@@ -689,7 +693,7 @@ class CandleAdapter(Adapter):
                                     continue # If the password has been set to "", then the user doesn't want security. Skip adding the security line to the code.
                                 line = line.replace(str(matched.group(1)),self.simple_password, 1)
                                 if self.DEBUG:
-                                    print("updated security line:" + str(line))
+                                    print("Added encryption password to code.")
                                 new_code += str(line) #+ "\n"
                                 continue
                         except:
@@ -930,7 +934,7 @@ class CandleAdapter(Adapter):
 
 
 
-    def check_libraries(self, source_id):
+    def check_libraries(self, source_id): # Source_ID isn't really used here.
         print("Checking for missing libraries, and installing if required.")
         result = {"success":False,"message":"Downloading required libraries failed"}
         errors = []
@@ -1003,14 +1007,29 @@ class CandleAdapter(Adapter):
 
 
     def test_upload(self,source_id, port_id):
-        print("Doing a test upload of the Candle Cleaner")
+        
         result = {"success":False,"message":"Testing"}
         errors = []
         if str(port_id) == "":
             print("Error: no port_id set")
             return result
+
         
+        # If we are uploading the Candle receiver, then we skip the test upload. This is because if th MySensors plugin is already installed, it will interfere.
+        try:
+            source_name = str(self.sources[int(source_id)])
+            if source_name == "Candle_receiver":
+                print("Skipping test upload of Candle Receiver")
+                result["success"] = True # pretend the test went ok, and skip it.
+                return result
+                
+        except Exception as ex:
+            print("Error while trying to skip test upload for the Candle Receiver: "  + str(ex))
+            
+        
+        print("Doing a test upload of the Candle Cleaner")
         print("Initial bootloader value: " + str(self.bootloader))
+        
         
         try:
             if "Candle_cleaner" in self.sources:
