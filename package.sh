@@ -7,6 +7,7 @@ version=$(grep version package.json | cut -d: -f2 | cut -d\" -f2)
 # Clean up from previous releases
 rm -rf *.tgz package
 rm -f SHA256SUMS
+find . -type f -name '*._' -delete
 
 # Put package together
 mkdir package
@@ -33,4 +34,5 @@ echo "generated checksums"
 # Make the tarball
 tar czf "Candle-manager-addon-${version}.tgz" package
 sha256sum "Candle-manager-addon-${version}.tgz"
+
 

@@ -71,7 +71,7 @@
     }
   },
   "short_name": "Candle Mgr",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "web_accessible_resources": [
     "css/*.css",
     "images/*.svg",
