@@ -118,7 +118,7 @@ function poll_USB(){
         
         if(json.state != undefined){
             if ( json.state == "stable" ) {
-                console.log("No change in connected USB devices")// No change in the number of attached USB devices.
+                //console.log("No change in connected USB devices")// No change in the number of attached USB devices.
             }
             else if ( json.state == "added" && json.new_port_id != undefined ){
                 

@@ -168,7 +168,7 @@ class CandleAdapter(Adapter):
             
         # Get JSON list of already installed Arduino libraries
         print("Looking for already installed libraries")
-        self.required_libraries = set(["MySensors", "SSD1306Ascii", "Grove - Barometer Sensor BME280", "OneWire"]) # some hardcoded libraries that are required
+        self.required_libraries = set(["MySensors", "SSD1306Ascii", "Grove - Barometer Sensor BME280"]) # some hardcoded libraries that are required
         self.installed_libraries = set()
         self.check_installed_arduino_libraries()
             
@@ -1015,7 +1015,7 @@ class CandleAdapter(Adapter):
             return result
 
         
-        # If we are uploading the Candle receiver, then we skip the test upload. This is because if th ∂sors plugin is already installed, it will interfere.
+        # If we are uploading the Candle receiver, then we skip the test upload. This is because if th MySensors plugin is already installed, it will interfere.
         try:
             source_name = str(self.sources[int(source_id)])
             if source_name == "Candle_receiver":
