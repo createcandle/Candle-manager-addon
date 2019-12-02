@@ -67,7 +67,7 @@ if 'MOZIOT_HOME' in os.environ:
 class CandleAdapter(Adapter):
     """Adapter for Candle"""
 
-    def __init__(self, verbose=True):
+    def __init__(self, verbose=False):
         """
         Initialize the object.
 
@@ -373,6 +373,13 @@ class CandleAdapter(Adapter):
         except Exception as e:
             print("Flask error: " + str(e))
         
+
+    def handle_device_saved(self, device_id, device):
+        print("Candle adapter: handle_device_saved is being called")
+
+
+
+
 
     def update_arduino_cli(self):
         success = False
@@ -1357,7 +1364,7 @@ class CandleDevice(Device):
             self.title = 'Candle manager'
             self.description = 'Candle manager'
         except Exception as e:
-            print("Error generating better password: " + str(e))
+            print("Error generating Candle Manager Thing: " + str(e))
 
 
 def remove_prefix(text, prefix):
