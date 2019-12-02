@@ -114,28 +114,35 @@ class CandleAdapter(Adapter):
         self.last_updated = time.time()
         
         
+        # Respond to gateway version
+        try:
+            print(self.gateway_version)
+            self.gateway_version_array = self.gateway_version.split(".")
+            
+        except:
+            print("self.gateway_version did not exist")
+        
+        
         # Get the user's settings
         self.add_from_config()
         
         
         # Create the Candle thing
         try:
-            device = CandleDevice(self)
-            self.handle_device_added(device)
-            print("Created the Candle Manager thing")
-        except:
-            print("Error: unable to create the Candle Manager thing. You can try to manually open this URL in your browser: http://gateway.local:" + str(self.port))
+            if self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10:
+                device = CandleDevice(self)
+                self.handle_device_added(device)
+                print("Created the Candle Manager thing")
 
-        try:
-            #self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
-            self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
-            print("self.create_candle_device = " + str(self.create_candle_device))
-            if str(self.create_candle_device) != 'None':
-                self.create_candle_device.connected_notify(False)
-                if self.DEBUG:
-                    print("-Set Create Candle thing status set to 'not connected'.")
-            else:
-                print("Warning: Create Candle thing does not exist.")
+                #self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
+                self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
+                print("self.create_candle_device = " + str(self.create_candle_device))
+                if str(self.create_candle_device) != 'None':
+                    self.create_candle_device.connected_notify(False)
+                    if self.DEBUG:
+                        print("-Set Create Candle thing status set to 'not connected'.")
+                else:
+                    print("Warning: Create Candle thing does not exist.")
         except:
             print("Error: unable to set the Create Candle thing status to 'not connected'.")
 
@@ -374,8 +381,8 @@ class CandleAdapter(Adapter):
             print("Flask error: " + str(e))
         
 
-    def handle_device_saved(self, device_id, device):
-        print("Candle adapter: handle_device_saved is being called")
+    #def handle_device_saved(self, device_id, device):
+    #    print("Candle adapter: handle_device_saved is being called")
 
 
 

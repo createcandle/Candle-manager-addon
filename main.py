@@ -28,7 +28,7 @@ def cleanup(signum, frame):
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
-    _HANDLER = CandleAdapter(verbose=True)
+    _HANDLER = CandleAdapter(verbose=False)
 
     # Wait until the proxy stops running, indicating that the gateway shut us
     # down.
