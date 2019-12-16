@@ -102,7 +102,7 @@ class CandleAdapter(Adapter):
         self.arduino_cli_path = os.path.join(self.add_on_path, str(sys.platform))
         print("self.arduino_cli_path = " + str(self.arduino_cli_path))
         
-        self.DEBUG = False
+        self.DEBUG = True
         self.DEVELOPMENT = False
         
         self.port = 8686
@@ -116,7 +116,8 @@ class CandleAdapter(Adapter):
         
         # Respond to gateway version
         try:
-            print(self.gateway_version)
+            if self.DEBUG:
+                print("Gateway version: " + self.gateway_version)
             self.gateway_version_array = self.gateway_version.split(".")
             
         except:
@@ -132,11 +133,13 @@ class CandleAdapter(Adapter):
             if self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10:
                 device = CandleDevice(self)
                 self.handle_device_added(device)
-                print("Created the Candle Manager thing")
+                if self.DEBUG:
+                    print("Created the Candle Manager thing")
 
                 #self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
                 self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
-                print("self.create_candle_device = " + str(self.create_candle_device))
+                if self.DEBUG:
+                    print("self.create_candle_device = " + str(self.create_candle_device))
                 if str(self.create_candle_device) != 'None':
                     self.create_candle_device.connected_notify(False)
                     if self.DEBUG:
@@ -165,7 +168,8 @@ class CandleAdapter(Adapter):
         # Update the Arduino CLI:
         try:
             if self.update_arduino_cli():
-                print("Succesfully updated Arduino CLI index and AVR")
+                if self.DEBUG:
+                    print("Succesfully updated Arduino CLI index and AVR")
                 
             else:
                 print("Warning: could not check for updates for the Arduino CLI (no internet connection?)")
@@ -189,9 +193,11 @@ class CandleAdapter(Adapter):
             hex_filename = "Candle_cleaner.arduino.avr." + str(self.arduino_type) + ".hex"
             #cleaner_hex_path = self.add_on_path + "/code/Candle_cleaner/Candle_cleaner.arduino.avr." + self.arduino_type + ".hex"
             cleaner_hex_path = os.path.join(self.add_on_path,'code','Candle_cleaner',hex_filename)
-            print("cleaner_hex_path = " + str(cleaner_hex_path))
+            if self.DEBUG:
+                print("cleaner_hex_path = " + str(cleaner_hex_path))
             if os.path.isfile(cleaner_hex_path):
-                print("HEX file already existed, so no need to pre-compile the Candle Cleaner")
+                if self.DEBUG:
+                    print("HEX file already existed, so no need to pre-compile the Candle Cleaner")
                 self.cleaner_pre_compiled = True
             elif "Candle_cleaner" in self.sources:
                 if self.DEBUG:
@@ -211,7 +217,8 @@ class CandleAdapter(Adapter):
         self.previous_serial_devices = set()
         #self.last_added_serial_port = ""
         try:
-            print("Making initial scan of USB ports")
+            if self.DEBUG:
+                print("Making initial scan of USB ports")
             self.scan_usb_ports()
         except:
             print("Error during initial scan of usb ports")
@@ -225,10 +232,12 @@ class CandleAdapter(Adapter):
         
         # Now we can set the thing to connected, since Flask will launch pretty quickly.
         try:
-            self.create_candle_device.connected_notify(True)
-            print("Set the Create Candle device to 'connected' state." + str(self.create_candle_device))
-        except:
-            print("Warning, could not set the Candle Manager thing to 'connected' state.")
+            if self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10:
+                self.create_candle_device.connected_notify(True)
+                if self.DEBUG:
+                    print("Set the Create Candle device to 'connected' state." + str(self.create_candle_device))
+        except Exception as ex:
+            print("Warning, could not set the Candle Manager thing to 'connected' state: " + str(ex))
         
         
         
@@ -582,7 +591,8 @@ class CandleAdapter(Adapter):
 
         self.previous_serial_devices = current_serial_devices
         if self.initial_usb_port_scan_finished == False:
-            print("Initial scan of USB ports complete")
+            if self.DEBUG:
+                print("Initial scan of USB ports complete")
             self.initial_usb_port_scan_finished = True
         #return {"state":"added","new_port_id":'/dev/ttyUSB1'} # emulate a new device being added, useful during development
         return result

@@ -7,7 +7,8 @@
   box-sizing: border-box;
   /*overflow: auto;*/
   position: relative;
-  top: 7.6rem;
+  top: 7.6rem;*/
+  top:0;
   left:0;
 }
 @media screen and (min-width: 1024px) {

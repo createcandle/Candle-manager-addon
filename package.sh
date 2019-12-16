@@ -18,8 +18,12 @@ mkdir package/code/Candle_cleaner
 cp source/Candle_cleaner/Candle_cleaner.ino package/source/Candle_cleaner/Candle_cleaner.ino
 cp source/Candle_cleaner/Candle_cleaner.ino package/code/Candle_cleaner/Candle_cleaner.ino
 
+# Pull down Python dependencies
+pip3 install -r requirements.txt -t lib --no-binary flask,pyserial,requests --prefix ""
+
+
 cp *.py manifest.json package.json LICENSE README.md boards.txt requirements.txt setup.cfg  package/
-cp -r pkg linux darwin css images js views  package/
+cp -r lib pkg linux darwin css images js views  package/
 find package -type f -name '*.pyc' -delete
 find package -type d -empty -delete
 echo "prepared the files in the package directory"
