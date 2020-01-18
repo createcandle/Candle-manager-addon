@@ -5,14 +5,14 @@
       this.addMenuEntry('Candle manager');
 
       this.content = '';
-			
+
       fetch(`/extensions/Candle-manager-addon/views/content.html`)
         .then((res) => res.text())
         .then((text) => {
           this.content = text;
         })
         .catch((e) => console.error('Failed to fetch content:', e));
-				
+
 			this.view.innerHTML = this.content;
     }
 
@@ -20,7 +20,7 @@
 			//console.log("Candle manager received show command.");
 			//console.log(this.content);
       this.view.innerHTML = this.content;
-			document.getElementById('extension-Candle-manager-addon-iframe').src = "http://" + window.location.hostname + ":8686";
+			document.getElementById('extension-Candle-manager-addon-iframe').src = "https://" + window.location.hostname + ":8686";
     }
 
 		hide(){
@@ -30,5 +30,5 @@
   }
 
   new CandleManagerExtension();
-  
+
 })();

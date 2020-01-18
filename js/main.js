@@ -9,42 +9,42 @@ var sketches_url = "https://raw.githubusercontent.com/createcandle/candle_source
 var current_url = document.location.href;
 var current_hostname = window.location.hostname;
 console.log(window.location.hostname);
-var flask_base = "http://" + current_hostname + ":8686";
+var flask_base = "https://" + current_hostname + ":8686";
 console.log(flask_base);
 
 	console.log("document ready");
-    
+
     //$.ajaxSetup({
     //    timeout: 60000;
     //});
-    
+
     //var el = $("ol.wizard.numeric");
 	// http://localhost:8080
 	// /extensions/Candle-manager-addon/js/wizard.jquery.js
-    
-	
+
+
     //if( window.innerHeight == screen.height) {
         // Browser is fullscreen, so we may need a way to close this tab. Javascript can't do that anymore, so instead we restart the entire Raspberry Pi..
-    //    $('#extension-Candle-manager-addon-button-close-tab').removeClass('hidden'); 
+    //    $('#extension-Candle-manager-addon-button-close-tab').removeClass('hidden');
     //}
-    
+
     $('#step3 button.back').on('click', function () {
         $("ol.extension-Candle-manager-addon-wizard.extension-Candle-manager-addon-numeric").wizard('previousStep');
         show_step(2);
     });
-    
+
     $('#extension-Candle-manager-addon-step3 button.extension-Candle-manager-addon-next').on('click', function () {
         if( running == false ){
             running = true;
             return_new_settings();
         }
     });
-    
+
     $('#extension-Candle-manager-addon-step4 button.extension-Candle-manager-addon-show.extension-Candle-manager-addon-code').on('click', function () {
         console.log("button clicked to toggle code display");
         $('#extension-Candle-manager-addon-new-code').toggleClass( 'extension-Candle-manager-addon-hidden' );
     });
-    
+
     $('#step5 button.next').on('click', function () {
         $("ol.extension-Candle-manager-addon-wizard.extension-Candle-manager-addon-numeric").wizard('nextStep');
         show_step(6);
@@ -53,7 +53,7 @@ console.log(flask_base);
         source_id = -1;     // Reset some variables
         running = false;
     });
-    
+
     $('#extension-Candle-manager-addon-skip-to-check').on('click', function () {
         if( running == false ){
             running = true;
@@ -63,11 +63,11 @@ console.log(flask_base);
             show_serial_debug();
         }
     });
-    
+
     $('button.extension-Candle-manager-addon-restart').on('click', function () {
         location.reload();
     });
-    
+
     $('#extension-Candle-manager-addon-check-for-updates').on('click', function () {
         update_sketches();
     });
@@ -78,7 +78,7 @@ console.log(flask_base);
 
     // Ask if a USB device has been plugged in.
     init();
-    
+
 
 
 
@@ -95,11 +95,11 @@ function init(){
 	console.log("INITTING");
 	console.log($(".extension-Candle-manager-addon-circular-spinner").length);
 	$(".extension-Candle-manager-addon-circular-spinner").fadeOut();
-	
+
 	var flask_api_url = flask_base + "/init";
 	//console.log(flask_api_url);
     $.ajax({
-        url: flask_api_url, 
+        url: flask_api_url,
         dataType: 'json',
         error: function(){
             console.log("Error during init ajax request (timeout?)");
@@ -112,7 +112,7 @@ function init(){
             }
             console.log(data);
             if ( data.advanced == 1 ){
-                $('.extension-Candle-manager-addon-advanced').show(); // Show all the advanced interface elements.    
+                $('.extension-Candle-manager-addon-advanced').show(); // Show all the advanced interface elements.
             }
             sketches_url = data.sketches_url;
             show_step(1);
@@ -128,13 +128,13 @@ function init(){
 function poll_USB(){
     // make Ajax call here, inside the callback call:
     $.getJSON(flask_base + "/scanUSB",function(json){
-        
+
         if(json.state != undefined){
             if ( json.state == "stable" ) {
                 console.log("No change in connected USB devices")// No change in the number of attached USB devices.
             }
             else if ( json.state == "added" && json.new_port_id != undefined ){
-                
+
                 console.log("New USB device connected at " + json.new_port_id)
                 if(current_step == 1){
                     console.log("json.new_port_id = " + json.new_port_id);
@@ -165,7 +165,7 @@ function poll_USB(){
 
 function generate_sources_list(){
     console.log("Generating sources list");
-        
+
     $.getJSON( flask_base + "/source", function( data ) {
         console.log(data);
         var items = [];
@@ -173,26 +173,26 @@ function generate_sources_list(){
             //console.log("at item:" + key);
             items.push( "<li id=extension-Candle-manager-addon-source" + key + " data-source-id=" + key + ">" + value + "</li>" );
         });
-        
+
         $( "<ul/>", {
             "id": "sources-list",
             "class":"list",
             html: items.join( "" )
         }).appendTo( "#extension-Candle-manager-addon-sources-container" );
-        
+
         $( "#extension-Candle-manager-addon-sources-list > li" ).each(function(index){
             $(this).string_to_color(["background-color"], $(this).text());
         });
-        
+
         $("#extension-Candle-manager-addon-sources-list > li").click(function(){
             //returnValue = ;
             console.log("clicked on " + $(this).text() );
             $('#extension-Candle-manager-addon-settings_device_name').text( $(this).text() );
             source_id = $(this).data('source-id');
             generate_settings_page(source_id);
-            
+
         });
-        
+
         // Finally, show the second step to the user
         $("ol.extension-Candle-manager-addon-wizard.extension-Candle-manager-addon-numeric").wizard('nextStep');
         show_step(2);
@@ -204,7 +204,7 @@ function generate_sources_list(){
 function update_sketches(){
     console.log("Checking for updates to sketches, url:" + sketches_url);
     $( "#extension-Candle-manager-addon-sources-container" ).empty();
-    
+
     $.ajax({
         url: flask_base + "/update_sketches",
         type: "POST",
@@ -212,11 +212,11 @@ function update_sketches(){
         contentType: "application/json; charset=utf-8",
         success: function(data) {
             console.log(data);
-        
+
             if(data == null || data.success == undefined){
                 return;
             }
-           
+
             generate_sources_list();
         }
     });
@@ -227,11 +227,11 @@ function update_sketches(){
 function generate_settings_page(source_id){
     console.log("Generating settings for #" + source_id);
     $( "#extension-Candle-manager-addon-settings" ).empty();
-    
+
     $.getJSON( flask_base + "/extract/" + source_id, function( data ) {
         console.log(data);
         var items = [];
-        
+
         // Generate explanation HTML
         if(data.explanation != undefined){
             $("#extension-Candle-manager-addon-settings-explanation").val(data.explanation);
@@ -240,7 +240,7 @@ function generate_settings_page(source_id){
         else{
             $("#extension-Candle-manager-addon-settings-explanation-container").hide();
         }
-        
+
         item_counter = 0;
         // Generate Settings HTML
         if( data.settings.length > 0 ){
@@ -248,7 +248,7 @@ function generate_settings_page(source_id){
                 console.log("at item:" + key);
                 if( key == 0){autofocus = "autofocus";}else{autofocus = "";}
                 if( value.type == "checkbox" && value.value == 1 ){ checked = "checked"; }else{ checked = ""; }
-                
+
                 if( value.type == "hr" ){
                     items.push( "<br/><br/>");
                 }
@@ -257,7 +257,7 @@ function generate_settings_page(source_id){
                     item_counter++;
                 }
             });
-            
+
             $( "<form/>", {
                 "id": "settings-form",
                 "class":"form",
@@ -267,7 +267,7 @@ function generate_settings_page(source_id){
         else{
             $( "#extension-Candle-manager-addon-settings" ).append( "<p>There are no settings for you to change.</p>" );
         }
-        
+
         // Finally, show the step to the user
         $("ol.extension-Candle-manager-addon-wizard.extension-Candle-manager-addon-numeric").wizard('nextStep');
         show_step(3);
@@ -280,7 +280,7 @@ function generate_settings_page(source_id){
 // This is called when the 'next' button on the settings step is pressed
 function return_new_settings(){
     console.log("Sending new settings back for #" + source_id);
-    
+
     // Grab new values from the form
     returnValues = [];
     $('#extension-Candle-manager-addon-settings-form :input').each(function(index){
@@ -289,8 +289,8 @@ function return_new_settings(){
             if($(this).is(":checked")){
                 returnValue = 1;
             }
-            else{ 
-                returnValue = 0; 
+            else{
+                returnValue = 0;
             }
         }
         else {
@@ -300,33 +300,33 @@ function return_new_settings(){
         returnValues.push(returnValue);
     });
     console.log("Values to return:" + returnValues);
-    
+
     // Send the new values back to the server (the add-on)
     $.ajax({
         url: flask_base + "/generate_code/" + source_id,
         type: "POST",
         data: JSON.stringify(returnValues),
         contentType: "application/json; charset=utf-8",
-        success: function(data) { 
-            
+        success: function(data) {
+
             //if(data == null || data.message == undefined || data.success == undefined){
             if(data == null){
                 console.error("Error while generating code");
                 return;
             }
-            
+
             console.log(data);
             if( data.success == true ){
                 console.log("Python received the new settings and was able to generate new code");
                 $("ol.extension-Candle-manager-addon-wizard.extension-Candle-manager-addon-numeric").wizard('nextStep');
-                
+
                 $('#extension-Candle-manager-addon-new-code').val(data.code);
-                
+
                 console.log("Added code to textarea");
                 //$("#new-code").linedtextarea(
                 //    {selectedLine: -1, selectedClass: 'lineselect'}
                 //);
-                
+
                 $('#extension-Candle-manager-addon-code-container').removeClass('extension-Candle-manager-addon-hidden');
                 show_step(4);
                 check_libraries();
@@ -344,17 +344,17 @@ function return_new_settings(){
 
 function check_libraries(){
     console.log("Asking to check_libraries");
-    
+
     $.getJSON( flask_base + "/check_libraries/" + source_id, function( data ) {
         console.log(data);
-        
+
         if(data == null || data.message == undefined || data.success == undefined){
             lost_connection();
             return;
         }
-        
+
         $("#extension-Candle-manager-addon-upload-status").text(data.message);
-        
+
         // Generate explanation HTML
         if( data.success == false ){
             console.log("ERROR. Something went wrong during libraries check:");
@@ -373,17 +373,17 @@ function check_libraries(){
 
 function compile(){
     console.log("Asking to start compilation");
-    
+
     $.getJSON( flask_base + "/compile/" + source_id, function( data ) {
         console.log(data);
-        
+
         if(data == null || data.message == undefined || data.success == undefined){
             lost_connection();
             return;
         }
-        
+
         $("#extension-Candle-manager-addon-upload-status").text(data.message);
-        
+
         // Generate explanation HTML
         if( data.success == false ){
             console.log("ERROR. Something went wrong during compiling:");
@@ -416,9 +416,9 @@ function test_upload(){
                 lost_connection();
                 return;
             }
-            
+
             $("#extension-Candle-manager-addon-upload-status").text(data.message);
-            
+
             // Generate explanation HTML
             if( data.success == false ){
                 console.log("ERROR. Something went wrong during the test upload.");
@@ -441,7 +441,7 @@ function test_upload(){
 
 function upload(){
     console.log("Asking to start upload");
-    
+
     $.ajax({
         url: flask_base + "/upload/" + source_id,
         type: "POST",
@@ -449,14 +449,14 @@ function upload(){
         contentType: "application/json; charset=utf-8",
         success: function(data) {
             console.log(data);
-            
+
             if(data == null || data.message == undefined || data.success == undefined){
                 lost_connection();
                 return;
             }
-            
+
             $("#extension-Candle-manager-addon-upload-status").text(data.message);
-            
+
             // Generate explanation HTML
             if( data.success == false ){
                 console.log("ERROR. Something went wrong during upload.");
@@ -483,23 +483,23 @@ function upload(){
 function show_upload_errors(errors){
     console.log("Showing errors");
     console.log(errors);
-    var items = [];    
-    
+    var items = [];
+
     $("#extension-Candle-manager-addon-upload-output").removeClass("extension-Candle-manager-addon-hidden");
-    
+
     if(errors.length == 0){return;}
-    
+
     $('#extension-Candle-manager-addon-errors-container').slideDown('slow');
     $.each( errors, function( key, value ) {
         //console.log("at item:" + key);
         items.push( "<li><span class=\"extension-Candle-manager-addon-error-number\">" + (key + 1) + "</span><span class=\"extension-Candle-manager-addon-error-text\">" +  value + "</span></li>" );
     });
-    
+
     $( "<ul/>", {
         "id": "extension-Candle-manager-addon-errors-list",
         html: items.join( "" )
     }).appendTo( "#extension-Candle-manager-addon-errors-container" );
-    
+
     $('button.extension-Candle-manager-addon-restart').removeClass('extension-Candle-manager-addon-hidden');
 }
 
@@ -516,21 +516,21 @@ function lost_connection(){
 function show_serial_debug(){
     console.log("Showing serial debug");
 
-    
+
     // Send the new values back to the server (the add-on)
     $.ajax({
         url: flask_base + "/serial_output",
         type: "POST",
         data: JSON.stringify(new_port_id), //{"port_id":port_id}
         contentType: "application/json; charset=utf-8",
-        success: function(data) { 
-            
+        success: function(data) {
+
             //if(data == null || data.message == undefined || data.success == undefined){
             if(data == null){
                 console.error("Empty response");
                 return;
             }
-            
+
             console.log(data);
             $('#extension-Candle-manager-addon-serial-output-container-spinner').remove();
             if( data.new_lines != undefined ){
@@ -538,14 +538,14 @@ function show_serial_debug(){
                 //$('#serial-output-container').append(document.createTextNode(data.new_lines));
                 $('#extension-Candle-manager-addon-serial-output-container').append(data.new_lines);
             }
-            
+
             if( new_port_id != "" ){
                 setTimeout(function(){
                     show_serial_debug();
                 }, 1000);
             }
-            
-            
+
+
         }
     });
 }
@@ -554,9 +554,9 @@ function show_serial_debug(){
 
 function serial_close(){
     console.log("Requesting closure of serial port");
-    
+
     $('#extension-Candle-manager-addon-serial-output-container').empty();
-    
+
     // Send the new values back to the server (the add-on)
     $.ajax({
         url: flask_base + "/serial_close",
@@ -569,7 +569,7 @@ function serial_close(){
                 console.error("Empty response");
                 return;
             }
-            
+
             console.log(data);
             if( data.success ){
                 console.log("closed port succesfully");
@@ -577,13 +577,13 @@ function serial_close(){
         }
     });
 }
-    
+
 
 
 function close_tab(){
     $.get( flask_base + "/close_tab");
 }
-    
+
 
 
 
@@ -609,7 +609,7 @@ function close_tab(){
 	$.string_to_color = function(str) {
 		return "#" + string_to_color(str);
 	};
-	
+
 	/**
 	 * Set one or more CSS properties for the set of matched elements.
 	 *
@@ -629,7 +629,7 @@ function close_tab(){
 		});
 	};
 })(jQuery);
- 
+
 /********************************************************
 Name: str_to_color
 Description: create a hash from a string then generates a color
@@ -663,7 +663,7 @@ function string_to_color(str, options) {
             .slice(1);
 
     };
-    
+
     // Convert init to an RGBA
     this.int_to_rgba = function(i) {
         var color = ((i >> 24) & 0xFF).toString(16) +
