@@ -1040,15 +1040,15 @@ class CandleAdapter(Adapter):
 
         
         # If we are uploading the Candle receiver, then we skip the test upload. This is because if th MySensors plugin is already installed, it will interfere.
-        try:
-            source_name = str(self.sources[int(source_id)])
-            if source_name == "Candle_receiver":
-                print("Skipping test upload of Candle Receiver")
-                result["success"] = True # pretend the test went ok, and skip it.
-                return result
-                
-        except Exception as ex:
-            print("Error while trying to skip test upload for the Candle Receiver: "  + str(ex))
+        #try:
+        #    source_name = str(self.sources[int(source_id)])
+        #    if source_name == "Candle_receiver":
+        #        print("Skipping test upload of Candle Receiver")
+        #        result["success"] = True # pretend the test went ok, and skip it.
+        #        return result
+        #        
+        #except Exception as ex:
+        #    print("Error while trying to skip test upload for the Candle Receiver: "  + str(ex))
             
         
         print("Doing a test upload of the Candle Cleaner")
