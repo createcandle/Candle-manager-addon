@@ -130,22 +130,22 @@ class CandleAdapter(Adapter):
         
         # Create the Candle thing
         try:
-            if self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10:
-                device = CandleDevice(self)
-                self.handle_device_added(device)
-                if self.DEBUG:
-                    print("Created the Candle Manager thing")
+            #if self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10: # temporarily disabled, since users were having issues if they used Mozilla's proxy service.
+            device = CandleDevice(self)
+            self.handle_device_added(device)
+            #if self.DEBUG:
+            print("Created the Candle Manager thing")
 
-                #self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
-                self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
+            #self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
+            self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
+            if self.DEBUG:
+                print("self.create_candle_device = " + str(self.create_candle_device))
+            if str(self.create_candle_device) != 'None':
+                self.create_candle_device.connected_notify(False)
                 if self.DEBUG:
-                    print("self.create_candle_device = " + str(self.create_candle_device))
-                if str(self.create_candle_device) != 'None':
-                    self.create_candle_device.connected_notify(False)
-                    if self.DEBUG:
-                        print("-Set Create Candle thing status set to 'not connected'.")
-                else:
-                    print("Warning: Create Candle thing does not exist.")
+                    print("-Set Create Candle thing status set to 'not connected'.")
+            else:
+                print("Warning: Create Candle thing does not exist.")
         except:
             print("Error: unable to set the Create Candle thing status to 'not connected'.")
 

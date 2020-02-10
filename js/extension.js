@@ -20,7 +20,13 @@
 			//console.log("Candle manager received show command.");
 			//console.log(this.content);
       this.view.innerHTML = this.content;
-			document.getElementById('extension-Candle-manager-addon-iframe').src = "http://" + window.location.hostname + ":8686";
+			
+			var the_protocol = "https://";
+			if (location.protocol != 'https:'){
+				the_protocol = "http://";
+			}
+			
+			document.getElementById('extension-Candle-manager-addon-iframe').src = the_protocol + window.location.hostname + ":8686";
     }
 
 		hide(){
