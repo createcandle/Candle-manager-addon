@@ -9,7 +9,14 @@ var sketches_url = "https://raw.githubusercontent.com/createcandle/candle_source
 var current_url = document.location.href;
 var current_hostname = window.location.hostname;
 console.log(window.location.hostname);
-var flask_base = "http://" + current_hostname + ":8686";
+
+
+if (location.protocol == 'http:'){
+	var flask_base = "http://" + current_hostname + ":8686";
+}
+else{
+	var flask_base = "https://" + current_hostname + ":8686";
+}
 console.log(flask_base);
 
 	console.log("document ready");
