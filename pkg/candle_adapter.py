@@ -22,7 +22,7 @@ import threading
 #from threading import Timer
 import serial #as ser
 import serial.tools.list_ports as prtlst
-from flask import Flask,Response, request,render_template,jsonify, url_for
+from flask import Flask,Response,request,render_template,jsonify,url_for
 
 #import asyncio
 
@@ -31,7 +31,7 @@ from gateway_addon import Adapter, Device, Database
 
 try:
     #from gateway_addon import APIHandler, APIResponse
-    from .api_handler import *
+    from .api_handler import * #CandleManagerAPIHandler
     print("CandleManagerAPIHandler imported.")
 except:
     print("Unable to load CandleManagerAPIHandler (which is used for UX extention)")
@@ -111,8 +111,7 @@ class CandleAdapter(Adapter):
         self.arduino_type = "nano"
         self.advanced_interface = False
         self.initial_usb_port_scan_finished = False
-        self.last_updated = time.time()
-        
+        self.last_updated = time.time()    
         
         # Respond to gateway version
         try:
@@ -381,9 +380,21 @@ class CandleAdapter(Adapter):
             #static_folder = os.path.join(self.add_on_path, 'pkg', 'static')
 
 
+            ssl_folder = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'ssl')
+
             #app.run(host="0.0.0.0", port=self.port, use_reloader=False, template_folder=template_folder, static_folder=static_folder)
             
-            app.run(host="0.0.0.0", port=self.port, use_reloader=False)
+            certificate_path = os.path.join(ssl_folder, 'certificate.pem')
+            privatekey_path = os.path.join(ssl_folder, 'privatekey.pem')
+            
+            print("certificate_path = " + str(certificate_path))
+            
+            if os.path.isfile(certificate_path):
+                print("found a certificate, running Flask as https")
+                app.run(host='0.0.0.0', debug=True, use_reloader=False, port=self.port, ssl_context=(certificate_path, privatekey_path) ) #ssl_context=('cert.pem', 'key.pem')
+            else:
+                print("Did not find a certificate, running Flask as http")
+                app.run(host="0.0.0.0", port=self.port, use_reloader=False)
             
             #threading.Thread(target=app.run).start()
         except Exception as e:
@@ -1353,16 +1364,23 @@ class CandleDevice(Device):
         """
         
         try:
-            lan_ip = get_ip()
-            full_lan_path = "http://" + str(lan_ip) + ":8686/"
-            print("Path to Candle manager server = " + str(full_lan_path))
+
+
+            self.full_lan_path = "http://gateway.local:8686"
+            try:
+                lan_ip = get_ip()
+                self.full_lan_path = "http://" + str(lan_ip) + ":8686/"
+            except Exception as ex:
+                print("Error, unable to get local lan path: " + str(ex))
+
+            print("Path to Candle manager server = " + str(self.full_lan_path))
 
 
             self.links = [
                 {
                     "rel": "alternate",
                     "mediaType": "text/html",
-                    "href": full_lan_path
+                    "href": self.full_lan_path
                 }
             ]
             Device.__init__(self, adapter, 'candle-device')
@@ -1371,7 +1389,7 @@ class CandleDevice(Device):
                 {
                     "rel": "alternate",
                     "mediaType": "text/html",
-                    "href": full_lan_path
+                    "href": self.full_lan_path
                 }
             ]
         
@@ -1487,3 +1505,5 @@ def get_ip():
     finally:
         s.close()
     return IP
+    
+    
