@@ -8,7 +8,6 @@
         "css/wizard.css"
       ],
       "js": [
-        "js/jquery-3.4.1.min.js",
         "js/extension.js"
       ]
     }
@@ -71,7 +70,7 @@
     }
   },
   "short_name": "Candle Mgr",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "web_accessible_resources": [
     "css/*.css",
     "images/*.svg",
