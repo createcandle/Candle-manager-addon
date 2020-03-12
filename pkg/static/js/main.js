@@ -27,7 +27,8 @@ $(document).ready(function(){
     });
     
     $('#step3 button.next').on('click', function () {
-        if( running == false ){
+        if( current_step == 3 && running == false ){
+			current_step = 4; // 4 = uploading step
             running = true;
             return_new_settings();
         }
@@ -66,7 +67,7 @@ $(document).ready(function(){
     });
 
     $('#button-close-tab').on('click', function () {
-        close_tab();
+        //close_tab();
     });
 
     // Ask if a USB device has been plugged in.
@@ -92,13 +93,19 @@ function init(){
             console.log("Error during init ajax request (timeout?)");
             $('#skip-update-text').removeClass('hidden');
             $('button#skip-update').fadeIn('slow');
+			$('button#skip-update').on('click', function () {
+	          	show_step(1);
+	            setInterval(poll_USB, 1000);
+	            $( "#wizard-container" ).slideDown("fast");
+			});
         },
         success: function(data){
             if(data == null){
                 console.log("Error: init function returned empty data.");
             }
             console.log(data);
-            if ( data.advanced == 1 ){
+            if ( data.advanced_interface == 1 ){
+				console.log("Unhiding advanced features");
                 $('.advanced').show(); // Show all the advanced interface elements.    
             }
             sketches_url = data.sketches_url;
@@ -124,6 +131,7 @@ function poll_USB(){
                 
                 console.log("New USB device connected at " + json.new_port_id)
                 if(current_step == 1){
+					current_step = 2;
                     console.log("json.new_port_id = " + json.new_port_id);
                     new_port_id = json.new_port_id;
                     $('.new-port-id').text(new_port_id);
@@ -154,8 +162,12 @@ function generate_sources_list(){
     console.log("Generating sources list");
         
     $.getJSON( "/source", function( data ) {
-        console.log(data);
+        //console.log(data);
         var items = [];
+		
+		$( "#sources-container" ).empty();
+		
+		
         $.each( data, function( key, value ) {
             //console.log("at item:" + key);
             items.push( "<li id=source" + key + " data-source-id=" + key + ">" + value + "</li>" );
@@ -172,12 +184,14 @@ function generate_sources_list(){
         });
         
         $("#sources-list > li").click(function(){
-            //returnValue = ;
-            console.log("clicked on " + $(this).text() );
-            $('#settings_device_name').text( $(this).text() );
-            source_id = $(this).data('source-id');
-            generate_settings_page(source_id);
-            
+			if( current_step == 2){
+				current_step = 3;
+	            //returnValue = ;
+	            console.log("clicked on " + $(this).text() );
+	            $('#settings_device_name').text( $(this).text() );
+	            source_id = $(this).data('source-id');
+	            generate_settings_page(source_id);
+			}
         });
         
         // Finally, show the second step to the user
@@ -198,7 +212,7 @@ function update_sketches(){
         data: JSON.stringify(sketches_url),
         contentType: "application/json; charset=utf-8",
         success: function(data) {
-            console.log(data);
+            //console.log(data);
         
             if(data == null || data.success == undefined){
                 return;
@@ -216,7 +230,7 @@ function generate_settings_page(source_id){
     $( "#settings" ).empty();
     
     $.getJSON( "/extract/" + source_id, function( data ) {
-        console.log(data);
+        //console.log(data);
         var items = [];
         
         // Generate explanation HTML
@@ -302,7 +316,7 @@ function return_new_settings(){
                 return;
             }
             
-            console.log(data);
+            //console.log(data);
             if( data.success == true ){
                 console.log("Python received the new settings and was able to generate new code");
                 $("ol.wizard.numeric").wizard('nextStep');
@@ -501,7 +515,7 @@ function lost_connection(){
 
 
 function show_serial_debug(){
-    console.log("Showing serial debug");
+    //console.log("Showing serial debug");
 
     
     // Send the new values back to the server (the add-on)
@@ -518,10 +532,10 @@ function show_serial_debug(){
                 return;
             }
             
-            console.log(data);
+            //console.log(data);
             $('#serial-output-container-spinner').remove();
             if( data.new_lines != undefined ){
-                console.log("new serial lines: " + data.new_lines);
+                //console.log("new serial lines: " + data.new_lines);
                 //$('#serial-output-container').append(document.createTextNode(data.new_lines));
                 $('#serial-output-container').append(data.new_lines);
             }

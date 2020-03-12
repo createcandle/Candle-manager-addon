@@ -43,7 +43,7 @@ except:
 
 
 
-DAY = 86400 # Seconds in a day
+#DAY = 86400 # Seconds in a day
 
 _TIMEOUT = 3
 
@@ -111,7 +111,10 @@ class CandleAdapter(Adapter):
         self.arduino_type = "nano"
         self.advanced_interface = False
         self.initial_usb_port_scan_finished = False
-        self.last_updated = time.time()    
+        self.last_updated = time.time()  
+	    #self.last_update_sketches_time = time.time()
+        self.update_interval = 86400 # a day
+        self.create_candle_manager_thing = False
         
         # Respond to gateway version
         try:
@@ -128,25 +131,26 @@ class CandleAdapter(Adapter):
         
         
         # Create the Candle thing
-        try:
-            #if self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10: # temporarily disabled, since users were having issues if they used Mozilla's proxy service.
-            device = CandleDevice(self)
-            self.handle_device_added(device)
-            #if self.DEBUG:
-            print("Created the Candle Manager thing")
+        if self.create_candle_manager_thing is True:
+            try:
+                #if self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10: # temporarily disabled, since users were having issues if they used Mozilla's proxy service.
+                device = CandleDevice(self)
+                self.handle_device_added(device)
+                #if self.DEBUG:
+                print("Created the Candle Manager thing")
 
-            #self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
-            self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
-            if self.DEBUG:
-                print("self.create_candle_device = " + str(self.create_candle_device))
-            if str(self.create_candle_device) != 'None':
-                self.create_candle_device.connected_notify(False)
+                #self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
+                self.create_candle_device = self.get_device('candle-device') # Or should it use the human readable name?
                 if self.DEBUG:
-                    print("-Set Create Candle thing status set to 'not connected'.")
-            else:
-                print("Warning: Create Candle thing does not exist.")
-        except:
-            print("Error: unable to set the Create Candle thing status to 'not connected'.")
+                    print("self.create_candle_device = " + str(self.create_candle_device))
+                if str(self.create_candle_device) != 'None':
+                    self.create_candle_device.connected_notify(False)
+                    if self.DEBUG:
+                        print("-Set Create Candle thing status set to 'not connected'.")
+                else:
+                    print("Warning: Create Candle thing does not exist.")
+            except:
+                print("Error: unable to set the Create Candle thing status to 'not connected'.")
 
         
         # Scan sources directory
@@ -158,60 +162,16 @@ class CandleAdapter(Adapter):
             print("Failed to scan sources directory: " + str(e))
         
         
-        # Download/update sketches
+        if self.DEBUG:
+            print("Starting the initial update")
         try:
-            self.update_sketches(self.json_sketches_url)
+            t = threading.Thread(target=self.initial_update)
+            t.daemon = True
+            t.start()
         except:
-            print("Failed to update sketches during add-on start (no internet connection?).")
-
-        # Update the Arduino CLI:
-        try:
-            if self.update_arduino_cli():
-                if self.DEBUG:
-                    print("Succesfully updated Arduino CLI index and AVR")
-                
-            else:
-                print("Warning: could not check for updates for the Arduino CLI (no internet connection?)")
-        except Exception as e:
-            print("Failed to download sketches from JSON file: " + str(e))
-
-            
-        # Get JSON list of already installed Arduino libraries
-        print("Looking for already installed libraries")
-        self.required_libraries = set(["MySensors", "SSD1306Ascii", "Grove - Barometer Sensor BME280"]) # some hardcoded libraries that are required
-        self.installed_libraries = set()
-        self.check_installed_arduino_libraries()
-            
-        # Pre-download the required libraries
-        self.check_libraries(0)
+            print("Error starting the initial update thread")
         
-            
-        # Pre-compile the cleaner code
-        self.cleaner_pre_compiled = False
-        try:
-            hex_filename = "Candle_cleaner.arduino.avr." + str(self.arduino_type) + ".hex"
-            #cleaner_hex_path = self.add_on_path + "/code/Candle_cleaner/Candle_cleaner.arduino.avr." + self.arduino_type + ".hex"
-            cleaner_hex_path = os.path.join(self.add_on_path,'code','Candle_cleaner',hex_filename)
-            if self.DEBUG:
-                print("cleaner_hex_path = " + str(cleaner_hex_path))
-            if os.path.isfile(cleaner_hex_path):
-                if self.DEBUG:
-                    print("HEX file already existed, so no need to pre-compile the Candle Cleaner")
-                self.cleaner_pre_compiled = True
-            elif "Candle_cleaner" in self.sources:
-                if self.DEBUG:
-                    print("Candle Cleaner was found at index " + str(self.sources.index("Candle_cleaner")))
-                test_result = self.compile(self.sources.index("Candle_cleaner"))
-                if self.DEBUG:
-                    print("Pre-compile result:" + str(test_result))
-                if test_result["success"] == True:
-                    print("Succesfully pre-compiled the cleaner code")
-                    self.cleaner_pre_compiled = True
-            else:
-                print("Candle Cleaner was missing from the source directory")
-        except Exception as e:
-            print("Failed to pre-compile Candle Cleaner code (which is uses during testing): " + str(e))
-
+        
         # USB scanning variables
         self.previous_serial_devices = set()
         #self.last_added_serial_port = ""
@@ -231,7 +191,7 @@ class CandleAdapter(Adapter):
         
         # Now we can set the thing to connected, since Flask will launch pretty quickly.
         try:
-            if self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10:
+            if self.create_candle_manager_thing is True and self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10:
                 self.create_candle_device.connected_notify(True)
                 if self.DEBUG:
                     print("Set the Create Candle device to 'connected' state." + str(self.create_candle_device))
@@ -407,6 +367,64 @@ class CandleAdapter(Adapter):
 
 
 
+    def initial_update(self):
+        
+        # Download/update sketches
+        try:
+            self.update_sketches(self.json_sketches_url)
+        except:
+            print("Failed to update sketches during add-on start (no internet connection?).")
+
+        # Update the Arduino CLI:
+        try:
+            if self.update_arduino_cli():
+                if self.DEBUG:
+                    print("Succesfully updated Arduino CLI index and AVR")
+                
+            else:
+                print("Warning: could not check for updates for the Arduino CLI (no internet connection?)")
+        except Exception as e:
+            print("Failed to download sketches from JSON file: " + str(e))
+
+            
+        # Get JSON list of already installed Arduino libraries
+        print("Looking for already installed libraries")
+        self.required_libraries = set(["MySensors", "SSD1306Ascii", "DallasTemperature","OneWire", "Grove - Barometer Sensor BME280", "SoftwareSerial"]) # some hardcoded libraries that are required
+        self.installed_libraries = set()
+        self.check_installed_arduino_libraries()
+
+        # Pre-download the required libraries
+        self.check_libraries(0)
+        
+            
+        # Pre-compile the cleaner code
+        self.cleaner_pre_compiled = False
+        try:
+            hex_filename = "Candle_cleaner.arduino.avr." + str(self.arduino_type) + ".hex"
+            #cleaner_hex_path = self.add_on_path + "/code/Candle_cleaner/Candle_cleaner.arduino.avr." + self.arduino_type + ".hex"
+            cleaner_hex_path = os.path.join(self.add_on_path,'code','Candle_cleaner',hex_filename)
+            if self.DEBUG:
+                print("cleaner_hex_path = " + str(cleaner_hex_path))
+            if os.path.isfile(cleaner_hex_path):
+                if self.DEBUG:
+                    print("HEX file already existed, so no need to pre-compile the Candle Cleaner")
+                self.cleaner_pre_compiled = True
+            elif "Candle_cleaner" in self.sources:
+                if self.DEBUG:
+                    print("Candle Cleaner was found at index " + str(self.sources.index("Candle_cleaner")))
+                test_result = self.compile(self.sources.index("Candle_cleaner"))
+                if self.DEBUG:
+                    print("Pre-compile result:" + str(test_result))
+                if test_result["success"] == True:
+                    print("Succesfully pre-compiled the cleaner code")
+                    self.cleaner_pre_compiled = True
+            else:
+                print("Candle Cleaner was missing from the source directory")
+        except Exception as e:
+            print("Failed to pre-compile Candle Cleaner code (which is uses during testing): " + str(e))
+        
+
+
 
     def update_arduino_cli(self):
         success = False
@@ -476,6 +494,12 @@ class CandleAdapter(Adapter):
     # Checks whether to download a list of files from a json, or just a single file.
     def update_sketches(self, sketches_url="https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json"):
         result = {"success":False}
+    
+		# Check if this wasn't already done recently.
+			
+		#if time.time() - self.last_update_sketches_time > 60: # Try an update every 60 seconds at most. To avoid overload when multiple users active (e.g. in a workshop, while debug is on.)
+		#    self.last_update_sketches_time = time.time()
+			
         try:
             print("received sketches_url = " + str(sketches_url))
             if sketches_url.startswith("http") and sketches_url.endswith(".json"):
@@ -486,71 +510,71 @@ class CandleAdapter(Adapter):
                     print(str(json_sketches_data["sketch_urls"]))
                 for sketch_url in json_sketches_data["sketch_urls"]:
                     self.download_source(sketch_url)
-                    
+            
             elif sketches_url.startswith("http") and sketches_url.endswith(".ino"):
                 self.download_source(sketches_url)
-            
+    
             result["success"] = True
-                
+        
         except Exception as e:
             print("Failed to download sketches from JSON file: " + str(e))
-            
+    
+		#else: # The update was already done recently.
+		#	result["success"] = True
+
         return result
+		
     
-    
-    # downloads a single .ino file
+    # Downloads a single file
     def download_source(self, sketch_url):
         
         if self.DEBUG:
             print("downloading sketch at " + str(sketch_url))
-        pattern = '^http.*\/([\w\-]*)\.ino'  # Extract file name (without .ino)
-        matched = re.match(pattern, sketch_url)
-        #print("matched?:" + str(matched))
-        if matched:
-            if matched.group(1) != None:
-                target_filename = str(matched.group(1))
-                #if self.DEBUG:
-                #    print("Sketch file name: " + target_filename)
-                target_dir = os.path.join(self.add_on_path, "source", target_filename)
-                target_file = os.path.join(target_dir, target_filename + ".ino")
-                
-                #if self.DEBUG:
-                #    print("target_dir  = " + str(target_dir))
-                print("Downloading: " + str(target_file))
-                
-                attempts = 0
-                while attempts < 3:
-                
-                    # Download file
-                    try:
-                        response = requests.get(sketch_url, allow_redirects=True)
-                    except Exception as e:
-                        print("could not download: " + str(e))
-                        attempts += 1
-                        continue
-                        
-                    # Create directory
-                    try:
-                        if not os.path.exists(target_dir):
-                            os.mkdir(target_dir)
-                    except Exception as e:
-                        print("problem creating directory: " + str(e))
-                        attempts += 1
-                        continue
-                        
-                    # Store file
-                    try:
-                        f = open( target_file, 'w' )
-                        #open('google.ico', 'wb').write(response.content)
-                        f.write( response.content.decode('utf-8') )
-                        f.close()
-                        break
-                    except Exception as e:
-                        attempts += 1
-                        print("Error writing to file: " + str(e))
-        
-        
-        
+						
+        source_dir = os.path.basename(os.path.normpath( os.path.dirname(sketch_url) ))
+        source_file = os.path.basename(sketch_url)
+
+        target_dir = os.path.join(self.add_on_path, "source", source_dir)
+        target_file = os.path.join(target_dir, source_file)
+      
+        if self.DEBUG:
+            print("source_dir = " + str(source_dir))
+            print("source_file = " + str(source_file))
+            print("target_dir = " + str(target_dir))
+            print("target_file = " + str(target_file))
+            
+        attempts = 0
+        while attempts < 3:
+      
+            # Download file
+            try:
+                response = requests.get(sketch_url, allow_redirects=True)
+            except Exception as e:
+                print("could not download: " + str(e))
+                attempts += 1
+                continue
+
+            # Create directory if it doesn't exist yet
+            try:
+                if not os.path.exists(target_dir):
+                    os.mkdir(target_dir)
+            except Exception as e:
+                print("problem creating directory: " + str(e))
+                attempts += 1
+                continue
+
+            # Store file
+            try:
+                f = open( target_file, 'w' )
+                f.write( response.content.decode('utf-8') )
+                f.close()
+                break
+            except Exception as e:
+                attempts += 1
+                print("Error writing to file: " + str(e))
+
+
+
 
     def scan_usb_ports(self): # Scans for USB serial devices
         current_serial_devices = set()
@@ -571,22 +595,15 @@ class CandleAdapter(Adapter):
                         current_serial_devices.add(str(port[0]))
                         if str(port[0]) not in self.previous_serial_devices:
                             print("New device plugged into port " + str(port[0]))
-                            #self.last_added_serial_port = str(port[0]) # TODO remove this
                             result["new_port_id"] = str(port[0])
-                            #if self.DEVELOPMENT:
-                            #    self.last_added_serial_port = '/dev/ttyUSB1' # Overrides the port to use during development of this add-on.
-                            #print("New USB device added. self.last_added_serial_port: " + self.last_added_serial_port)
                             result["state"] = "added"
-                            #break
+
 
             #print("Current USB devices: " + str(current_serial_devices))
 
             if len(self.previous_serial_devices) > len(current_serial_devices):
                 try:
-                    #removed[4] = list(set(self.previous_serial_devices) - set(current_serial_devices))
-                    #removed = set(self.previous_serial_devices) - set(current_serial_devices)
                     removed = self.previous_serial_devices - current_serial_devices
-                    #removed = current_serial_devices.difference(self.previous_serial_devices)
                     print("removed list = " + str(removed))
                     result["removed_port_ids"] = list(removed)
                     
@@ -628,7 +645,8 @@ class CandleAdapter(Adapter):
         #print("now: " + str(now))
         #print("last updated: " + str(self.last_updated))
         #then = time.mktime(self.last_updated.timetuple())
-        if (now - self.last_updated) > DAY or self.DEBUG:
+        if (now - self.last_updated) > self.update_interval:
+            self.last_updated = now
             print("Will check for updates.")
             # more than 24 hours passed
         
@@ -638,7 +656,7 @@ class CandleAdapter(Adapter):
                 self.update_arduino_cli()
                 print("4. Updated Arduino CLI")
                 
-                self.last_updated = time.time() # remember the time we last updated
+                #self.last_updated = time.time() # remember the time we last updated
 
             except Exception as e:
                 print("Error while attempting init update: " + str(e))
@@ -692,7 +710,7 @@ class CandleAdapter(Adapter):
         for line in lines:
             
             # The first part extracts the header text from the code.
-            if state == 0:
+            if state == 0: # state 0 is when the code is analysed, state 1 is when new settings are being updated in the code.
                 try:
                     new_code += str(line) #+ "\n" # if generate_new_code is set to true, this will create the code with the updated settings.
                     if "* SETTINGS */" not in line:
@@ -706,7 +724,7 @@ class CandleAdapter(Adapter):
                 except Exception as e:
                     print("Error extracting header text: " + str(e))
                     
-            # This part deals with the part of the Arduino code that contains the settings
+            # This part deals with the part of the Arduino code that contains the settings. State 2 is when things get updated in the code.
             if state == 1:
                 title = ""
                 comment = ""
@@ -722,9 +740,10 @@ class CandleAdapter(Adapter):
                             pattern = '^#define\s\w+SIMPLE_PASSWD\s\"([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"'
                             matched = re.match(pattern, line)
                             if matched and matched.group(1) != None:
-                                print("found security line")
+                                if self.DEBUG:
+                                    print("found security line")
                                 if str(self.simple_password) == "":
-                                    print("Password was empty, so not adding security line to final code")
+                                    print("WARNING - Password was empty, so not adding encryption feature to final code")
                                     continue # If the password has been set to "", then the user doesn't want security. Skip adding the security line to the code.
                                 line = line.replace(str(matched.group(1)),self.simple_password, 1)
                                 if self.DEBUG:
@@ -795,7 +814,7 @@ class CandleAdapter(Adapter):
                         
                         try:
                             # NORMAL VARIABLE
-                            pattern = '\w+\s\w+\[?[0-9]*?\]?\s?\=\s?\"?([\w\+\!\@\#\$\%\ˆ\&\*\(\)\.\,\-]*)\"?\;\s*\/?\/?\s?([\w\"\_\-\+\s\(\)]*[\.\s|\?\s])(.*)'
+                            pattern = '\w+\s\w+\[?[0-9]*?\]?\s?\=\s?\"?([\w\+\!\@\#\$\%\ˆ\&\*\(\)\.\,\-]*)\"?\;\s*\/?\/?\s?([\w\"\_\-\+\#\s\(\)]*[\.\s|\?\s])(.*)'
                             matched = re.match(pattern, line)
                             #print("matched?:" + str(matched))
                             if matched:
@@ -815,7 +834,6 @@ class CandleAdapter(Adapter):
                                 else:
                                     settings.append({"type":"text" ,"value":str(matched.group(1)), "title":title ,"comment":comment})
                                 
-                                
                                 settings_counter += 1 # This is used to keep track of the ID of the settings line we are modifying.
                                 continue
                         except:
@@ -825,7 +843,7 @@ class CandleAdapter(Adapter):
                             
                         try:
                             # COMPLEX DEFINE WITH A STRING VALUE INSIDE ""
-                            pattern = '^#define\s\w+\s\"?([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]+)\"?\s*\/?\/?\s?([\w\"\_\-\+\s\(\)]*[\.\s|\?\s])(.*)'
+                            pattern = '^#define\s\w+\s+\"?([\w\.\*\#\@\(\)\!\ˆ\%\&\$\-]*)\"?\s*\/?\/?\s?([\w\"\_\-\+\s\(\)]*[\.\s|\?\s])(.*)'
                             matched = re.match(pattern, line)
                             if matched:
                                 if matched.group(2) != None:
@@ -838,7 +856,7 @@ class CandleAdapter(Adapter):
                                 if generate_new_code and settings_counter < len(new_values_list):
                                     line = line.replace(str(matched.group(1)),str(new_values_list[settings_counter]), 1)
                                     if self.DEBUG:
-                                        print("updated line:" + str(line))
+                                        print("updated complex define line:" + str(line))
                                     new_code += str(line) #+ "\n"
                                     
                                 settings.append({"type":"text" ,"value":str(matched.group(1)), "title":title ,"comment":comment})
@@ -859,6 +877,8 @@ class CandleAdapter(Adapter):
                     new_code += str(line) #+ "\n"
                     if not generate_new_code:
                         print("Breaking early, since there is no need to scan all the Arduino code yet.")
+                        if self.DEBUG:
+                            print(str(settings))
                         break # No point in getting the rest of the code if this is not a 'generate code' run.
                     continue
             
@@ -1273,72 +1293,105 @@ class CandleAdapter(Adapter):
             
             #print("Loading settings for Candle manager Config: " + str(config))
             
-            if 'Sketches' in config:
-                self.json_sketches_url = str(config['Sketches'])
-                print("-Sketch URL found in settings")
-            else:
-                print("-No Arduino sketch(es) URL found in the code.")
             
-            if 'Password' in config:
-                print("-Password found in settings")
-                self.simple_password = str(config['Password'])
+        
+            # Debug
+            try:
+                if 'Debugging' in config:
+                    self.DEBUG = bool(config['Debugging'])
+                    if self.DEBUG:
+                        print("Debugging is set to: " + str(self.DEBUG))
+                else:
+                    self.DEBUG = False
                 
-                if self.simple_password == "changeme":
-                    try:
-                        #alphabet = string.ascii_letters + string.digits
-                        #better_password = ''.join(secrets.choice(alphabet) for i in range(8))
+            except:
+                print("Error loading debugging preference")
+            
+            
+            # Sketches URL
+            try:
+                if 'Sketches' in config:
+                    self.json_sketches_url = str(config['Sketches'])
+                    print("-Sketch URL found in settings")
+                else:
+                    print("-No Arduino sketch(es) URL found in the code.")
+            except:
+                print("Error loading sketches URL from preference")
+            
+            
+            # Password
+            try:
+                if 'Password' in config:
+                    print("-Password found in settings")
+                    self.simple_password = str(config['Password'])
+                
+                    if self.simple_password == "changeme":
+                        try:
+                            #alphabet = string.ascii_letters + string.digits
+                            #better_password = ''.join(secrets.choice(alphabet) for i in range(8))
                         
-                        #try:
-                            # Try to generate an even better password.
-                        alphabet = string.ascii_letters + string.digits
-                        while True:
-                            better_password = ''.join(secrets.choice(alphabet) for i in range(8))
-                            if (any(c.islower() for c in better_password)
-                                    and any(c.isupper() for c in better_password)
-                                    and sum(c.isdigit() for c in better_password) >= 2):
-                                break
-                        #except:
-                            #pass
+                            #try:
+                                # Try to generate an even better password.
+                            alphabet = string.ascii_letters + string.digits
+                            while True:
+                                better_password = ''.join(secrets.choice(alphabet) for i in range(8))
+                                if (any(c.islower() for c in better_password)
+                                        and any(c.isupper() for c in better_password)
+                                        and sum(c.isdigit() for c in better_password) >= 2):
+                                    break
+                            #except:
+                                #pass
                             
                         
-                        #print("Generated a better password")
-                        #print(str(better_password))
-                        config['Password'] = better_password
+                            #print("Generated a better password")
+                            #print(str(better_password))
+                            config['Password'] = better_password
                     
-                        # Store the better password.
-                        print("Storing overridden settings")
-                        try:
-                            database = Database('Candle-manager-addon')
-                            if not database.open():
-                                print("Error, could not open settings database to store better password.")
-                                #return
-                            else:
-                                database.save_config(config)
-                                database.close()
-                                print("-The password was changeme, so a better password was generated and stored in settings.")
+                            # Store the better password.
+                            print("Storing overridden settings")
+                            try:
+                                database = Database('Candle-manager-addon')
+                                if not database.open():
+                                    print("Error, could not open settings database to store better password.")
+                                    #return
+                                else:
+                                    database.save_config(config)
+                                    database.close()
+                                    print("-The password was changeme, so a better password was generated and stored in settings.")
                         
-                        except:
-                            print("Error! Failed to store better password in database.")
-                    except Exception as e:
-                        print("Error generating better password: " + str(e))
-                    
-                    
-                    
+                            except:
+                                print("Error! Failed to store better password in database.")
+                        except Exception as e:
+                            print("Error generating better password: " + str(e))
+
+                else:
+                    print("-No Password found in settings")
+            except:
+                print("Error loading encryption password from preference")
+            
+
+            # Arduino type
+            try:
+                if 'Arduino type' in config:
+                    if str(config['Arduino type']) == "Arduino Nano":
+                        self.arduino_type == "nano"
+                    if str(config['Arduino type']) == "Arduino Uno":
+                        self.arduino_type == "uno"
+                    if str(config['Arduino type']) == "Arduino Mega":
+                        self.arduino_type == "mega"
+                    print("-Arduino type found in settings")
+            except:
+                print("Error loading Arduino type from preference")
                 
-            else:
-                print("-No Password found in settings")
+            # Advanced
+            try:
+                if 'Advanced' in config:
+                    self.advanced_interface = bool(config['Advanced'])
+                    self.create_candle_manager_thing = True
+            except:
+                print("Error loading advanced preference")
+            
                 
-            if 'Arduino type' in config:
-                if str(config['Arduino type']) == "Arduino Nano":
-                    self.arduino_type == "nano"
-                if str(config['Arduino type']) == "Arduino Uno":
-                    self.arduino_type == "uno"
-                if str(config['Arduino type']) == "Arduino Mega":
-                    self.arduino_type == "mega"
-                print("-Arduino type found in settings")
-                
-            if 'Advanced' in config:
-                self.advanced_interface = bool(config['Advanced'])
                 
         except:
             print("Error loading configuration")
@@ -1402,10 +1455,18 @@ class CandleDevice(Device):
             print("Error generating Candle Manager Thing: " + str(e))
 
 
+
+
+
+#
+#  HELPER FUNCTIONS
+#
+
 def remove_prefix(text, prefix):
     if text.startswith(prefix):
         return text[len(prefix):]
     return text  # or whatever
+
 
 
 def run_command(cmd, timeout_seconds=60):
@@ -1419,41 +1480,11 @@ def run_command(cmd, timeout_seconds=60):
         else:
             if p.stderr:
                 return "Error: " + str(p.stderr)  + '\n' + "Command failed"   #.decode('utf-8'))
-                #yield("Command failed")
-                #Style.error('Preprocess failed: ')
-                #print(result.stderr)
-        
-        
-        
-        
-        #p = subprocess.Popen(command,
-        #                    stdout=subprocess.PIPE,
-        #                    stderr=subprocess.PIPE,
-        #                    timeout=timeout_seconds,
-        #                    shell=True)
-        # Read stdout from subprocess until the buffer is empty !
-        """
-        for bline in iter(p.stdout.readline, b''):
-            line = bline.decode('ASCII') #decodedLine = lines.decode('ISO-8859-1')
-            if line: # Don't print blank lines
-                yield line
-        # This ensures the process has completed, AND sets the 'returncode' attr
-        while p.poll() is None:                                                                                                                                        
-            sleep(.1) #Don't waste CPU-cycles
-        # Empty STDERR buffer
-        err = p.stderr.read()
-        if p.returncode == 0:
-            yield("Command success")
-        else:
-            # The run_command() function is responsible for logging STDERR 
-            #print("len(err) = " + str(len(err)))
-            if len(err) > 1:
-                yield("Error: " + str(err.decode('utf-8')))
-            yield("Command failed")
-            #return false
-        """
+
     except Exception as e:
         print("Error running Arduino CLI command: "  + str(e))
+        
+        
         
 def run_command_json(cmd, timeout_seconds=60):
     try:
@@ -1465,26 +1496,11 @@ def run_command_json(cmd, timeout_seconds=60):
         else:
             if result.stderr:
                 return "Error: " + str(result.stderr)  #.decode('utf-8'))
-                #Style.error('Preprocess failed: ')
-                #print(result.stderr)
-        
-        
-        #subprocess.run(cmd, timeout=5)
-        
-        #process = subprocess.Popen(
-        #    cmd,
-        #    shell=True,
-        #    timeout=timeout_seconds,
-        #    stdout=subprocess.PIPE)
-        #process.wait()
-        #data, err = process.communicate()
-        #if process.returncode is 0:
-        #    return data.decode('utf-8')
-        #else:
-        #    return "Error: " + str(err.decode('utf-8'))
-            #print("Error exit code:", err.decode('utf-8'))
+ 
     except Exception as e:
         print("Error running Arduino JSON CLI command: "  + str(e))
+        
+        
         
 def split_sentences(st):
     sentences = re.split(r'[.?!]\s*', st)
@@ -1493,6 +1509,7 @@ def split_sentences(st):
     else:
         return sentences[:-1]
         
+
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
