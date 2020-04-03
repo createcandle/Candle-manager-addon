@@ -62,29 +62,34 @@ class CandleManagerAPIHandler(APIHandler):
                 print("API call to full_lan_path")
                 try:
         
-                    self.full_lan_path = "http://gateway.local:8686"
+                    
+                        
+                    
+                    self.full_lan_path = "gateway.local:8686"
+                        
                     try:
-                        
-                        
                         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                         try:
                             # doesn't even have to be reachable
-                            s.connect(('10.255.255.255', 1))
+                            s.connect(('192.126.199.199', 1))
                             lan_ip = s.getsockname()[0]
                         except:
                             lan_ip = 'gateway.local'
                         finally:
                             s.close()
                         
-                        
-                        
-                        
-                        #lan_ip = get_ip()
-                        self.full_lan_path = "https://" + str(lan_ip) + ":8686/"
+                        self.full_lan_path = str(lan_ip) + ":8686/"
                     except Exception as ex:
                         print("Error, unable to get local lan path: " + str(ex))        
         
-                    response = {'full_lan_path':self.full_lan_path}
+        
+        
+                    if self.adapter.ssl_enabled:
+                        self.full_lan_path = "https://" + self.full_lan_path
+                    else:
+                        self.full_lan_path = "http://" + self.full_lan_path
+        
+                    response = {'ssl_enabled':self.adapter.ssl_enabled, 'full_lan_path':self.full_lan_path}
                     if self.adapter.DEBUG:
                         print("Returning local path: " + str(response))
         

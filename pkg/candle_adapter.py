@@ -106,6 +106,7 @@ class CandleAdapter(Adapter):
         self.DEVELOPMENT = False
         
         self.port = 8686
+        self.ssl_enabled = False
         self.json_sketches_url = ""
         self.simple_password = ""
         self.arduino_type = "nano"
@@ -130,6 +131,20 @@ class CandleAdapter(Adapter):
         self.add_from_config()
         
         
+        # Detect if SSL is enabled
+        ssl_folder = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'ssl')
+        self.certificate_path = os.path.join(ssl_folder, 'certificate.pem')
+        self.privatekey_path = os.path.join(ssl_folder, 'privatekey.pem')
+        
+        if self.DEBUG:
+            print("certificate_path = " + str(self.certificate_path))
+        
+        if os.path.isfile(self.certificate_path):
+            if self.DEBUG:
+                print("found a certificate, assuming SSL/Tunnel is enabled")
+            self.ssl_enabled = True
+        
+        
         # Create the Candle thing
         if self.create_candle_manager_thing is True:
             try:
@@ -152,6 +167,11 @@ class CandleAdapter(Adapter):
             except:
                 print("Error: unable to set the Create Candle thing status to 'not connected'.")
 
+        
+
+
+        
+        
         
         # Scan sources directory
         self.sources = []
@@ -335,25 +355,12 @@ class CandleAdapter(Adapter):
                                              endpoint, filename)
                         values['q'] = int(os.stat(file_path).st_mtime)
                 return url_for(endpoint, **values)
-
-            #template_folder = os.path.join(self.add_on_path, 'pkg', 'templates')
-            #static_folder = os.path.join(self.add_on_path, 'pkg', 'static')
-
-
-            ssl_folder = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'ssl')
-
-            #app.run(host="0.0.0.0", port=self.port, use_reloader=False, template_folder=template_folder, static_folder=static_folder)
             
-            certificate_path = os.path.join(ssl_folder, 'certificate.pem')
-            privatekey_path = os.path.join(ssl_folder, 'privatekey.pem')
-            
-            print("certificate_path = " + str(certificate_path))
-            
-            if os.path.isfile(certificate_path):
-                print("found a certificate, running Flask as https")
-                app.run(host='0.0.0.0', debug=True, use_reloader=False, port=self.port, ssl_context=(certificate_path, privatekey_path) ) #ssl_context=('cert.pem', 'key.pem')
+            if self.ssl_enabled:
+                print("Running Flask as https")
+                app.run(host='0.0.0.0', debug=True, use_reloader=False, port=self.port, ssl_context=(self.certificate_path, self.privatekey_path) )
             else:
-                print("Did not find a certificate, running Flask as http")
+                print("Running Flask as http")
                 app.run(host="0.0.0.0", port=self.port, use_reloader=False)
             
             #threading.Thread(target=app.run).start()
@@ -1419,12 +1426,17 @@ class CandleDevice(Device):
         try:
 
 
-            self.full_lan_path = "http://gateway.local:8686"
+            self.full_lan_path = "gateway.local:8686"
             try:
                 lan_ip = get_ip()
-                self.full_lan_path = "http://" + str(lan_ip) + ":8686/"
+                self.full_lan_path = str(lan_ip) + ":8686/"
             except Exception as ex:
                 print("Error, unable to get local lan path: " + str(ex))
+
+            if self.ssl_enabled:
+                self.full_lan_path = "https://" + self.full_lan_path
+            else:
+                self.full_lan_path = "http://" + self.full_lan_path
 
             print("Path to Candle manager server = " + str(self.full_lan_path))
 

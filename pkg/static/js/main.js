@@ -9,6 +9,8 @@ var sketches_url = "https://raw.githubusercontent.com/createcandle/candle_source
 
 $(document).ready(function(){
 	console.log("document ready");
+	
+	parent.postMessage('iframeIsDone', '*');
     
     //$.ajaxSetup({
     //    timeout: 60000;

@@ -1,7 +1,7 @@
 {
   "name": "Candle-manager-addon",
   "display_name": "Candle manager",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Candle manager allows you to upload sketches to an Arduino.",
   "author": "CreateCandle",
   "main": "bootstrap.py",
