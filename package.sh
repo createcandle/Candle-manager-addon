@@ -23,7 +23,7 @@ pip3 install -r requirements.txt -t lib --no-binary flask,pyserial,requests --pr
 
 
 cp *.py manifest.json package.json LICENSE README.md boards.txt requirements.txt setup.cfg  package/
-cp -r lib pkg linux darwin css images js views  package/
+cp -r lib pkg arduino-cli css images js views package/
 find package -type f -name '*.pyc' -delete
 find package -type d -empty -delete
 echo "prepared the files in the package directory"
