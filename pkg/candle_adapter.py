@@ -99,24 +99,26 @@ class CandleAdapter(Adapter):
         
         self.add_on_path = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'addons','Candle-manager-addon')
         print("self.add_on_path = " + str(self.add_on_path))
+     
 
-	if sys.platform == 'darwin':
-	    self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'darwin-x64')
-	elif sys.platform == 'linux':
-	    machine = os.uname().machine
+        if sys.platform == 'darwin':
+            self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'darwin-x64')
+        elif sys.platform == 'linux':
+            machine = os.uname().machine
 
-	    if machine == 'aarch64':
-		self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-arm64')
-	    elif machine.startswith('arm'):
-		self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-arm')
-	    elif machine == 'x86_64':
-		self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-x64')
-	    else:
-		self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-ia32')
-	else:
-	    print('Unknown platform!')
-	    self.arduino_cli_path = None
-
+            if machine == 'aarch64':
+                self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-arm64')
+            elif machine.startswith('arm'):
+                self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-arm')
+            elif machine == 'x86_64':
+                self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-x64')
+            else:
+                self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-ia32')
+            else:
+                print('Unknown platform!')
+                self.arduino_cli_path = None
+     
+     
         print("self.arduino_cli_path = " + str(self.arduino_cli_path))
         
         self.DEBUG = True
