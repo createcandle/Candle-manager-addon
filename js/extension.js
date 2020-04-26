@@ -16,20 +16,20 @@
 	  this.view.innerHTML = this.content;
 			
 	  var attachFuncEvent = "message";
-	          var attachFunc = window.addEventListener ;
-	          if (! window.addEventListener) {
-	              attachFunc = window.attachEvent;
-	              attachFuncEvent = "onmessage";
-	          }
+      var attachFunc = window.addEventListener ;
+      if (! window.addEventListener) {
+          attachFunc = window.attachEvent;
+          attachFuncEvent = "onmessage";
+      }
 
-	          attachFunc(attachFuncEvent, function(event) {
-	              if (event.data ==  'iframeIsDone') { // iframe has succesfully loaded the Candle manager callback
-					  //console.log("Candle manager loaded in iframe succesfully");
-					  var ssl_frame_warning = document.getElementById('extension-Candle-manager-addon-ssl-frame-warning');
-					  ssl_frame_warning.parentNode.removeChild(ssl_frame_warning); // remove the warning if the Candle manager loaded succesfully
-	              }
-	          });
-			
+      attachFunc(attachFuncEvent, function(event) {
+          if (event.data ==  'iframeIsDone') { // iframe has succesfully loaded the Candle manager callback
+			  //console.log("Candle manager loaded in iframe succesfully");
+			  var ssl_frame_warning = document.getElementById('extension-Candle-manager-addon-ssl-frame-warning');
+			  ssl_frame_warning.parentNode.removeChild(ssl_frame_warning); // remove the warning if the Candle manager loaded succesfully
+          }
+      });
+
     }
 
     show() {
