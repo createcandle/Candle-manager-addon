@@ -106,14 +106,20 @@ function init(){
                 console.log("Error: init function returned empty data.");
             }
             console.log(data);
-            if ( data.advanced_interface == 1 ){
-				console.log("Unhiding advanced features");
-                $('.advanced').show(); // Show all the advanced interface elements.    
-            }
-            sketches_url = data.sketches_url;
-            show_step(1);
-            setInterval(poll_USB, 1000);
-            $( "#wizard-container" ).slideDown("fast");
+			
+			if ( data.message == "busy" ){
+				setTimeout(init, 2000);
+			}
+			else{
+	            if ( data.advanced_interface == 1 ){
+					console.log("Unhiding advanced features");
+	                $('.advanced').show(); // Show all the advanced interface elements.    
+	            }
+	            sketches_url = data.sketches_url;
+	            show_step(1);
+	            setInterval(poll_USB, 1000);
+	            $( "#wizard-container" ).slideDown("fast");
+			}
         },
         timeout: 20000 // Sets timeout to 20 seconds.
     });

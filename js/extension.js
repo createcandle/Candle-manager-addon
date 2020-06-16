@@ -50,10 +50,19 @@
 			}
 			else{
 			*/
-				// If the user is using https and/or the tunneling feature, find out what the actual local IP address is from the controller.
-	      	window.API.postJson(
+			
+			var https_in_url = 0;
+			if (location.protocol == 'https:'){
+				https_in_url = 1
+			}
+			
+			
+			// If the user is using https and/or the tunneling feature, find out what the actual local IP address is from the controller.
+	      	
+			
+			window.API.postJson(
 		        `/extensions/${this.id}/api/full_lan_path`,
-		        {'ssl':1,'hostname':window.location.hostname} // Not currently used
+		        {'ssl':https_in_url,'hostname':window.location.hostname} // Not currently used
 		      ).then((body) => {
 						//full_lan_path = body['full_lan_path'];
 						console.log("API response:");
