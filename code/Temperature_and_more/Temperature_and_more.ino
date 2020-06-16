@@ -1,7 +1,7 @@
 /* 
  * Temperature and more sensor
  * 
- * This device can measure:
+ * This device is basically a weather station. It can measure:
  * - Temperature
  * - Humidity 
  * - Air pressure (barometer). 
@@ -22,20 +22,28 @@
  * SETTINGS */ 
 
 
-#define SECONDS_BETWEEN_SENDING 60                  // Sleep time between reads for the BME sensor (in seconds). Keep this value at 60 if you have enabled the forecast feature, as the forecast algorithm needs a sample every minute. MAximum is 255 (because the value is stored as a byte, instead of the bigger 'int')
+#define SECONDS_BETWEEN_SENDING 60                  // Interval. Sleep time between taking and transmitting readings from the BME sensor (in seconds). Keep this value at 60 if you have enabled the forecast feature, as the forecast algorithm needs a sample every minute.
 
-#define HAS_TOUCH_SCREEN                            // Did you connect a touch screen?
+#define HAS_TOUCH_SCREEN                            // Did you connect a touch screen? Touching it will turn the screen itself on and off.
+
+#define ALLOW_CONNECTING_TO_NETWORK                 // Connect wirelessly. Is this device allowed to connect to the local Candle network? For privacy or security reasons you may prefer a stand-alone device.
 
 //#define MY_REPEATER_FEATURE                       // Act as a repeater? The devices can pass along messages to each other to increase the range of your network.
 
 #define RF_NANO                                     // RF-Nano. Check this box if you are using the RF-Nano Arduino, which has a built in radio. The Candle project uses the RF-Nano.
-
 
  /* END OF SETTINGS
  *
  *
  *
  */
+
+//#define DEBUG                                     // Do you want to see extra debugging information in the serial output?
+//#define DEBUG_SCREEN                              // Do you want to see extra debugging information about the touch screen in the serial output?
+//#define MY_DEBUG                                  // Enable MySensors debug output to the serial monitor, so you can check if the radio is working ok.
+
+
+
 
 // PINS
 #define TOUCH_SCREEN_RX_PIN 5                       // The receive (RX) pin for the touchscreen. This connects to the transmit (TX) pin of the touchscreen.
@@ -49,9 +57,6 @@
 #define MY_RF24_CE_PIN 10                           // Used by the MySensors library.
 #endif
 
-//#define DEBUG                                     // Do you want to see extra debugging information in the serial output?
-//#define DEBUG_SCREEN                              // Do you want to see extra debugging information about the touch screen in the serial output?
-//#define MY_DEBUG                                  // Enable MySensors debug output to the serial monitor, so you can check if the radio is working ok.
 
 
 // Enable and select the attached radio type
@@ -67,7 +72,7 @@
 #define MY_RF24_PA_LEVEL RF24_PA_MAX
 
 // Mysensors security
-#define MY_ENCRYPTION_SIMPLE_PASSWD "5BqWAka9"      // Be aware, the length of the password has an effect on memory use.
+#define MY_ENCRYPTION_SIMPLE_PASSWD "smarthome"     // Be aware, the length of the password has an effect on memory use.
 //#define MY_SIGNING_SOFT_RANDOMSEED_PIN A7         // Setting a pin to pickup random electromagnetic noise helps make encryption more secure.
 
 
@@ -84,11 +89,10 @@
 
 
 
-
-
-
 // LIBRARIES
+#ifdef ALLOW_CONNECTING_TO_NETWORK
 #include <MySensors.h>                              // The MySensors library. Hurray!
+#endif
 #include "Seeed_BME280.h"                           // "Grove - Barometer Sensor BME280". A relatively new library (as of 2018), works well with cheap BME280 sensors from China.
 #include <avr/wdt.h>                                // The watchdog timer - if the device becomes unresponsive and doesn't periodically reset the timer, then it will automatically reset once the timer reaches 0.
 
@@ -106,6 +110,10 @@ SoftwareSerial touch_screen_serial(TOUCH_SCREEN_RX_PIN,TOUCH_SCREEN_TX_PIN);    
 #define ITEM_HEIGHT 80                              // How many pixels tall a single item on the screen is.
 #define LABEL_HEIGHT 25                             // How many pixels in height labels like 'temperature' are.
 
+#define T_POSITION 40                               // Negative horizontal position of the "T" icon, indicating it is allowed to transmit data.
+#define W_POSITION 30                               // Negative horizontal position of the "W" icon, indicating a wireless connection.
+
+
 boolean touched = false;                            // Was the touchscreen just touched?
 
 signed int touchX = 0;                              // Touch screen position X
@@ -116,7 +124,8 @@ signed int touchY = 0;                              // Touch screen position Y
 PROGMEM const byte play[] =             {0x07, 0x11, ' ', 'P', 'L', 'A', 'Y', 0xEF,}; // Places the word ' play' on the screen.
 PROGMEM const byte on[] =               {0x07, 0x11, ' ', 'O','N', ' ', ' ', 0xEF,}; // Places the word ' on  ' on the screen.
 PROGMEM const byte off[] =              {0x07, 0x11, ' ', 'O', 'F', 'F', ' ', 0xEF,}; // Places the word ' off ' on the screen.
-PROGMEM const byte w[] =                {0x07, 0x11, 'w', 0x00, ' ', 0x00, 0x00, 0xEF,}; // Places the word 'w    ' on the screen.
+//PROGMEM const byte w[] =                {0x07, 0x11, 'W', 0x00, ' ', 0x00, 0x00, 0xEF,}; // Places the word 'w    ' on the screen.
+//PROGMEM const byte t[] =                {0x07, 0x11, 'T', 0x00, ' ', 0x00, 0x00, 0xEF,}; // Places the word 'w    ' on the screen.
 PROGMEM const byte menu[] =             {0x07, 0x11, 'M', 'E', 'N', 'U', ' ', 0xEF,}; // Places the word 'menu ' on the screen.
 PROGMEM const byte more[] =             {0x07, 0x11, 'M', 'O', 'R', 'E', '>', 0xEF,}; // Places the word 'menu ' on the screen.
 
@@ -170,8 +179,8 @@ const MessageDef MessageTable[] PROGMEM = {
   {SCREEN_TEMPERATURE,"Temperature"},
   {SCREEN_HUMIDITY,"Humidity"},
   {SCREEN_FORECAST,"Barometer"},
-  {SCREEN_STABLE,"STABLE"},
-  {SCREEN_SUNNY,"SUNNY"},
+  {SCREEN_STABLE,"Stable"},
+  {SCREEN_SUNNY,"Sunny"},
   {SCREEN_CLOUDY,"Cloudy"},
   {SCREEN_UNSTABLE,"Unstable"},
   {SCREEN_THUNDERSTORM,"Thunderstorm"},
@@ -181,14 +190,14 @@ const MessageDef MessageTable[] PROGMEM = {
 
 const byte metadataArraySize = 8;                   // The size of the array to store the serial data we're decoding in.
 byte metaData[metadataArraySize];                   // Holds metadata for a replayable signal.
-byte screen_brightness = 255;                         // When this is 0 the screen is turned off.
+byte screen_brightness = 255;                       // When this is 0 the screen is turned off.
 
 
 #endif // End of has_touch_screen
 
 
 #define INTERVAL 1000                               // When active, the internal clock runs every 1000 milliseconds, which is a second.
-
+#define RADIO_DELAY 100                             // milliseconds betweeen radio signals during the presentation phase.
 
 float previous_temperature = 0;                     // Contains the latest temperature value.
 float temperature = 0;                              // Contains the latest temperature value.
@@ -199,13 +208,14 @@ unsigned int pressure = 0;                          // Contains the latest air p
 byte forecast = 5;                                  // A number that represents a type of weather forecast
 
 
-// VARIABLES YOU PROBABLY SHOULDN'T CHANGE
-#define RADIO_DELAY 100                             // milliseconds betweeen radio signals during the presentation phase.
+// MySensors child IDs
 #define TEMP_CHILD_ID 0                             // For MySensors. Within this node each sensortype should have its own ID number.
 #define HUM_CHILD_ID 1
 #define BARO_CHILD_ID 2 
 #define FORECAST_CHILD_ID 3
-#define SCREEN_BUTTON_CHILD_ID 4
+#define SCREEN_BUTTON_CHILD_ID 4                    // The child ID of the switch to toggle the screen backlight on and off.
+#define DATA_TRANSMISSION_CHILD_ID 5                // The child ID of the data transmission switch.
+
 
 // Forecast variables
 #define CONVERSION_FACTOR (1.0/10.0)                // Used by forecast algorithm to convert from Pa to kPa, by dividing hPa by 10.
@@ -225,17 +235,26 @@ float pressureAvg2;
 float dP_dt;                                        // Used by the forecast algorithm.
 
 
+#ifdef ALLOW_CONNECTING_TO_NETWORK
 // MySensors variables
 MyMessage temperature_message(TEMP_CHILD_ID, V_TEMP);
 MyMessage humidity_message(HUM_CHILD_ID, V_HUM);
 MyMessage pressure_message(BARO_CHILD_ID, V_PRESSURE);
 MyMessage string_message(FORECAST_CHILD_ID, V_TEXT);
-MyMessage button_message(SCREEN_BUTTON_CHILD_ID, V_STATUS); // Allows the controller to turn the screen on and off.
+MyMessage relay_message(SCREEN_BUTTON_CHILD_ID, V_STATUS); // Allows the controller to turn data transmission as well as the screen on and off.
 
 
-boolean connectedToNetwork = false;                 // Are we connected to the local MySensors network? Used to display the 'w' connection icon.
-boolean send_all_values = 1;                        // Sends the state of the toggle to the controller on startup or when requested by the controller.
-boolean metric = true;                              // Should the device show metric or Fahrenheit?
+// Connection toggle feature
+boolean transmission_state = true;
+boolean previous_transmission_state = false;
+
+// Other
+boolean connected_to_network = false;               // Are we connected to the local MySensors network? Used to display the 'w' connection icon.
+boolean send_all_values = true;                     // Sends the state of the toggle to the controller on startup or when requested by the controller.
+#endif
+
+boolean metric = true;                              // Should the device show metric or Fahrenheit? By default it will show metric.
+
 
 
 
@@ -249,45 +268,58 @@ int freeRam () {
 // via https://playground.arduino.cc/Code/AvailableMemory
 */
 
-
+#ifdef ALLOW_CONNECTING_TO_NETWORK
 void presentation()  {
   // Send the sketch version information to the gateway and Controller
-  sendSketchInfo(F("Weather station"), F("1.0")); wait(RADIO_DELAY);
+  sendSketchInfo(F("Temperature and more"), F("1.0")); wait(RADIO_DELAY);
 
   // Tell the MySensors gateway what kind of sensors this node has, and what their ID's on the node are, as defined in the code above.
+  present(DATA_TRANSMISSION_CHILD_ID, S_BINARY, F("Data transmission")); wait(RADIO_DELAY);  
   present(TEMP_CHILD_ID, S_TEMP, F("Temperature")); wait(RADIO_DELAY);
   present(HUM_CHILD_ID, S_HUM, F("Humidity")); wait(RADIO_DELAY);
   present(BARO_CHILD_ID, S_BARO, F("Air pressure")); wait(RADIO_DELAY);
   present(FORECAST_CHILD_ID, S_INFO, F("Forecast")); wait(RADIO_DELAY);
 #ifdef HAS_TOUCH_SCREEN
   present(SCREEN_BUTTON_CHILD_ID, S_BINARY, F("Screen")); wait(RADIO_DELAY);
-  send_all_values = 1;
 #endif
+  send_all_values = true;
 }
 
 
-#ifdef HAS_TOUCH_SCREEN
+
 void send_values(){
 #ifdef DEBUG
-  Serial.println(F("Sending button states"));
+  Serial.println(F("Sending values"));
 #endif
+  send(relay_message.setSensor(DATA_TRANSMISSION_CHILD_ID).set(transmission_state)); wait(RADIO_DELAY);
+  send(relay_message.setSensor(SCREEN_BUTTON_CHILD_ID).set(1)); wait(RADIO_DELAY);
 
-  send(button_message.setSensor(SCREEN_BUTTON_CHILD_ID).set(1));
-  wait(RADIO_DELAY);
-
+  send_all_values = false;
 }
-#endif  
+
+#endif // End of allowed connecting to network
 
 
 
 void setup() {
   Serial.begin(115200); // for serial debugging over USB.
-  Serial.println(F("Hello, I am a climate sensor"));
+  Serial.println(F("Hello, I am a temperature and more sensor"));
+
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+  transmission_state = loadState(DATA_TRANSMISSION_CHILD_ID);
+  previous_transmission_state = !transmission_state; // This was the change process will be triggered on the first loop
+#ifdef DEBUG
+  Serial.print(F("Loaded transmission_state: ")); Serial.println(transmission_state);
+#endif
+#endif
 
 #ifdef HAS_TOUCH_SCREEN
-  wait(2000);
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+  wait(2000);                                       // The wait() function is "non-blocking", meaning incoming wireless communication is still possible while waiting. The Delay() function puts the Arduino into a deep sleep state.
+#else
+  delay(2000);
+#endif
   touch_screen_serial.begin(9600);
-  wait(2000);
 
 #ifdef DEBUG_SCREEN
   Serial.println(F("BC: backlight_on"));
@@ -324,18 +356,17 @@ void setup() {
   setCur(SCREEN_PADDING,SCREEN_PADDING + (ITEM_HEIGHT * 2));
   writeText(SCREEN_FORECAST);   
   
-
 #endif // end of has_touch_screen
 
-
+#ifdef ALLOW_CONNECTING_TO_NETWORK
   if(isTransportReady()){                           // If we are connected to the MySensors network.
     Serial.println(F("Connected to gateway!"));
-    connectedToNetwork = true;
+    connected_to_network = true;
     metric = getControllerConfig().isMetric;        // Ask if Celcius or Fahrenheit is prefered.
   }else{
     Serial.println(F("! NOT CONNECTED TO GATEWAY"));  
   }
-
+#endif
 
   if(!bme280.init()){
     Serial.println(F("! Sensor error"));
@@ -350,22 +381,46 @@ void setup() {
 
 void loop()
 {
+#ifdef ALLOW_CONNECTING_TO_NETWORK
   // If a presentation is requested, we also send the values of the children.
-  if( send_all_values ){
+  if( send_all_values == true ){
 #ifdef DEBUG
     Serial.println(F("RESENDING VALUES"));
 #endif
-    send_all_values = 0;
     send_values();
   }
+#endif
 
   static unsigned long previousMillis = 0;          // Used to keep track of time.
-  static byte intervalCounter = 255;                // How may intervals have passed.
+  static unsigned int intervalCounter = SECONDS_BETWEEN_SENDING; // How may intervals have passed.
   
 #ifdef HAS_TOUCH_SCREEN    
   // Check if the screen is being touched.
   readResponse();
 #endif
+
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+  if( transmission_state != previous_transmission_state ){
+    previous_transmission_state = transmission_state;
+    saveState(DATA_TRANSMISSION_CHILD_ID, transmission_state);
+    Serial.print(F("Sending new data transmission state: ")); Serial.println(transmission_state);
+    wait(RADIO_DELAY);
+    send(relay_message.setSensor(DATA_TRANSMISSION_CHILD_ID).set(transmission_state)); wait(RADIO_DELAY);
+
+#ifdef HAS_TOUCH_SCREEN
+    if( transmission_state ){
+      Serial.println(F("BC: show T icon"));
+      setCur(TOUCHSCREEN_WIDTH - T_POSITION, SCREEN_PADDING );
+      fontSize(1);
+      writeString("T",1);
+    }
+    else {
+      Serial.println(F("BC: hide T icon"));
+      roundedRectangle(TOUCHSCREEN_WIDTH - T_POSITION,0, 8, LABEL_HEIGHT, 0, BLACK);  
+    }
+#endif // End of has_touch_screen
+  }
+#endif // End of allow_connecting_to_network
 
 
 
@@ -376,17 +431,24 @@ void loop()
   //
 
 
-  if(millis() - previousMillis >= INTERVAL){        // Main loop, runs every second.
+  if( millis() - previousMillis >= INTERVAL ){      // Main loop, runs every second.
     previousMillis = millis();                      // Store the current time as the previous measurement start time.
     
-    if(intervalCounter >= SECONDS_BETWEEN_SENDING){
+    if( intervalCounter >= SECONDS_BETWEEN_SENDING ){
       intervalCounter = 0;
-    }else{
+    }
+    else{
       intervalCounter++;
     }
-    //Serial.println(intervalCounter);
     
-    wdt_reset(); // Reset the watchdog timer
+    wdt_reset();                                    // Reset the watchdog timer
+
+#ifdef ALLOW_CONNECTING_TO_NETWORK                  // About once a minute, let the controller know this device is connected, even if no sensor data is being sent.
+    if( intervalCounter % 60 == 0 ){
+      Serial.println(F("Sending heartbeat"));
+      sendHeartbeat();
+    }
+#endif
 
 
     // Clock schedule
@@ -405,14 +467,16 @@ void loop()
           if(!metric){
             temperature = (temperature * 9.0)/5.0 + 32.0;
           }
-  
-          Serial.print(F("Sending temp: ")); Serial.println(temperature);
-          connectedToNetwork = false;               // If we receive an echo then this will be set back to true.
+          Serial.print(F("New temperature: ")); Serial.println(temperature);
+          
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+          connected_to_network = false;               // If we receive an echo then this will be set back to true.
           send(temperature_message.set(temperature,1),1); // Ask for an echo from the controller
-  
-  #ifdef HAS_TOUCH_SCREEN
-          displayNetworkStatus();
-  
+#endif
+#ifdef HAS_TOUCH_SCREEN
+//#ifdef ALLOW_CONNECTING_TO_NETWORK
+//          displayNetworkStatus();
+//#endif
           // Clear the background for this part of the screen.
           roundedRectangle(0,LABEL_HEIGHT, TOUCHSCREEN_WIDTH, ITEM_HEIGHT - LABEL_HEIGHT, 0, BLACK);
           
@@ -452,15 +516,19 @@ void loop()
 
       if( current_humidity != previous_humidity ){
         previous_humidity = current_humidity;
-  
-  
-        Serial.print(F("Sending humidity ")); Serial.println(current_humidity);
-        send(humidity_message.set(current_humidity));
-              
-  #ifdef HAS_TOUCH_SCREEN
-
-        displayNetworkStatus();                       // Show or remove the W icon in the top-right of the screen.
+        Serial.print(F("New humidity: ")); Serial.println(current_humidity);
         
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+        if(transmission_state){
+          send(humidity_message.set(current_humidity));
+        }
+#endif
+#ifdef HAS_TOUCH_SCREEN
+
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+        displayNetworkStatus();                       // Show or remove the W icon in the top-right of the screen.
+#endif
+
         // Clear the background for this part of the screen.
         roundedRectangle(0,ITEM_HEIGHT + LABEL_HEIGHT, TOUCHSCREEN_WIDTH, ITEM_HEIGHT - LABEL_HEIGHT, 0, GREY111111);
   
@@ -497,9 +565,13 @@ void loop()
     case 2:
       
       pressure = round(bme280.getPressure() / 100);
-      Serial.print(F("Sending pressure ")); Serial.println(pressure);
-      send(pressure_message.set((pressure),1));
-
+      Serial.print(F("New pressure: ")); Serial.println(pressure);
+      
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+      if(transmission_state){
+        send(pressure_message.set((pressure),1));     // If data is allowed to be transmitted, send the new air pressure.
+      }
+#endif
       forecast = sample(pressure/100);
       //forecast = random(5);                         // Show a random icon. This is used in exhibits, to make it a bit more interesting.
 
@@ -516,9 +588,9 @@ void loop()
         setCur(SCREEN_PADDING,SCREEN_PADDING + (ITEM_HEIGHT * 2) + LABEL_HEIGHT);
         fontSize(2);
         
-        char pressure_value_string[6];                       // We create a character array to hold a 'string' representation of the temperature value.
+        char pressure_value_string[6];                // We create a character array to hold a 'string' representation of the temperature value.
         memset(pressure_value_string,0,sizeof(pressure_value_string));// We fill the character array with zeros
-        dtostrf(pressure, 0, 0, pressure_value_string);   // Here the floating point value is turned into a 'string'.
+        dtostrf(pressure, 0, 0, pressure_value_string); // Here the floating point value is turned into a 'string'.
   
         writeString(pressure_value_string,4);
 
@@ -530,8 +602,12 @@ void loop()
         
         // UNKNOWN
         if(forecast == 5){
-          Serial.println(F("UNKNOWN"));
-          send(string_message.set(F("Unknown")));       // Sending the latest forecast to the controller.
+          Serial.println(F("Forecast: UNKNOWN"));
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+          if(transmission_state){
+            send(string_message.set(F("Unknown")));   // Sending the latest forecast to the controller.
+          }
+#endif
 #ifdef HAS_TOUCH_SCREEN
           //fontSize(4);
           writeText(SCREEN_UNKNOWN);
@@ -541,9 +617,14 @@ void loop()
         // STABLE WEATHER
         if(forecast == STABLE){
           Serial.println(F("STABLE"));
-          send(string_message.set(F("Stable")));       // Sending the latest forecast to the controller.
-          cloud_color = WHITE;
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+          if(transmission_state){
+            send(string_message.set(F("Stable")));    // Sending the latest forecast to the controller.
+          }
+#endif
+          
 #ifdef HAS_TOUCH_SCREEN
+          cloud_color = WHITE;
           fontSize(4);
           writeText(SCREEN_STABLE);
 #endif
@@ -552,7 +633,11 @@ void loop()
         // UNSTABLE WEATHER
         else if(forecast == UNSTABLE){
           Serial.println(F("UNSTABLE"));
-          send(string_message.set(F("Unstable")));
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+          if(transmission_state){
+            send(string_message.set(F("Unstable")));
+          }
+#endif
 #ifdef HAS_TOUCH_SCREEN
           fontSize(4);
           writeText(SCREEN_UNSTABLE);
@@ -562,8 +647,11 @@ void loop()
         // SUNNY WEATHER
         else if(forecast == SUNNY){
           Serial.println(F("SUNNY"));
-          send(string_message.set(F("Sunny")));
-          //circle_size = 50;
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+          if(transmission_state){
+            send(string_message.set(F("Sunny")));
+          }
+#endif
 #ifdef HAS_TOUCH_SCREEN
           //circle(TOUCHSCREEN_WIDTH / 2, ITEM_HEIGHT * 3, circle_size, LIGHT_YELLOW); // x, y, radius, color
           circle(TOUCHSCREEN_WIDTH / 2, ITEM_HEIGHT * 3, circle_size, YELLOW);
@@ -575,9 +663,10 @@ void loop()
 
         // CLOUDY WEATHER OR THUNDERSTORM
         else if(forecast == CLOUDY || forecast == THUNDERSTORM){
-          if(forecast == THUNDERSTORM){ cloud_color = RED; }
+          
 
 #ifdef HAS_TOUCH_SCREEN
+          if(forecast == THUNDERSTORM){ cloud_color = RED; }
           circle(TOUCHSCREEN_WIDTH / 2, ITEM_HEIGHT * 3, circle_size, cloud_color); // x, y, radius, color
           circle((TOUCHSCREEN_WIDTH / 2) - circle_size, ITEM_HEIGHT * 3 + 10, circle_size - 10, cloud_color);
           circle(int((TOUCHSCREEN_WIDTH / 2) + circle_size), ITEM_HEIGHT * 3 + 20, circle_size - 20, cloud_color);
@@ -585,14 +674,22 @@ void loop()
 #endif
           if(forecast == THUNDERSTORM){
             Serial.println(F("THUNDERSTORM"));
-            send(string_message.set(F("Thunderstorm")));
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+            if(transmission_state){
+              send(string_message.set(F("Thunderstorm")));
+            }
+#endif
 #ifdef HAS_TOUCH_SCREEN
             writeText(SCREEN_THUNDERSTORM);
 #endif
           }
           else {
             Serial.println(F("CLOUDY"));
-            send(string_message.set(F("Cloudy")));
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+            if(transmission_state){
+              send(string_message.set(F("Cloudy")));
+            }
+#endif
 #ifdef HAS_TOUCH_SCREEN
             writeText(SCREEN_CLOUDY);
 #endif
@@ -736,39 +833,26 @@ byte sample(float pressure)
 }
 
 
-    //for (float i=0; i<=6 ; i=i+.4) {
-      // Calculate sun rays end points
-      //int resultX = sunPositionX + (int)round( sunSize * cos( i ) );
-      //int resultY = sunPositionY + (int)round( sunSize * sin( i ) );
-    //}
-      
-
-
-
-
-
-
-
 #ifdef HAS_TOUCH_SCREEN
-
+#ifdef ALLOW_CONNECTING_TO_NETWORK
 void displayNetworkStatus()                         // Show connection icon on the display
 {
-  if( connectedToNetwork ){
+  if( connected_to_network ){
 #ifdef DEBUG_SCREEN
     Serial.println(F("BC: show W icon"));
 #endif
-    setCur(TOUCHSCREEN_WIDTH - 30, SCREEN_PADDING );
+    setCur(TOUCHSCREEN_WIDTH - W_POSITION, SCREEN_PADDING );
     fontSize(1);
-    basicCommand(w);
+    writeString("W",1);
   }
   else {
 #ifdef DEBUG_SCREEN
     Serial.println(F("BC: hide W icon"));
 #endif
-    roundedRectangle(TOUCHSCREEN_WIDTH - 50,0, 50, LABEL_HEIGHT, 0, BLACK);  
+    roundedRectangle(TOUCHSCREEN_WIDTH - W_POSITION,0, 8, LABEL_HEIGHT, 0, BLACK); 
   }
 }
-
+#endif // End if allowed connecting to network
 
 
 void simpleHorizontal(unsigned int y, unsigned int color)                        // Draw a horizontal line on the screen.
@@ -1060,9 +1144,7 @@ void basicCommand(const char* cmd)
 
 
 // This function can be activated after sending a command. It will wait until a response has arrived (or 100 milliseconds have passed), and then allow the Arduino to continue.
-//void waitForResponse(byte expectedBytes) // From the touch screen
-
-void waitForResponse() // From the touch screen
+void waitForResponse()                              // From the touch screen
 {
 #ifdef DEBUG_SCREEN
   Serial.println(); Serial.println(F("WAITING FOR RESPONSE FROM SCREEN"));
@@ -1071,13 +1153,21 @@ void waitForResponse() // From the touch screen
   byte b = 0;
   while( touch_screen_serial.available() == 0 && b < 250){
     b++;
+#ifdef ALLOW_CONNECTING_TO_NETWORK
     wait(1);
+#else
+    delay(1);
+#endif
   }
 #ifdef DEBUG_SCREEN
   Serial.print(F("wait time: ")); Serial.println(b);
 #endif  
   if( touch_screen_serial.available() > 0 ){
+#ifdef ALLOW_CONNECTING_TO_NETWORK
     wait(10);                                       // Perhaps some more bytes will show up.
+#else
+    delay(10);
+#endif
     while( touch_screen_serial.available() > 0 ){   // Throwing away the response. All we care about is touch messages, and they are handled in the readResponse function.
       byte x = touch_screen_serial.read();
       //Serial.print(x); Serial.print(F("-"));
@@ -1102,7 +1192,9 @@ void turnOnScreen(boolean desired_state)
 #endif
     screen_brightness = 255;
     basicCommand(backlight_on);                     // Turn on the touch screen backlight.
-    send(button_message.setSensor(SCREEN_BUTTON_CHILD_ID).set(1));
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+    send(relay_message.setSensor(SCREEN_BUTTON_CHILD_ID).set(1));
+#endif
   }
   else {
 #ifdef DEBUG_SCREEN
@@ -1110,7 +1202,9 @@ void turnOnScreen(boolean desired_state)
 #endif
     screen_brightness = 0;
     basicCommand(backlight_off);                    // Turn off the touch screen backlight
-    send(button_message.setSensor(SCREEN_BUTTON_CHILD_ID).set(0));
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+    send(relay_message.setSensor(SCREEN_BUTTON_CHILD_ID).set(0));
+#endif
   }
 }
 
@@ -1138,23 +1232,33 @@ void clearReceivedBuffer()
 #endif // End of touch screen check.
 
 
-
-void receive(const MyMessage &message)
+#ifdef ALLOW_CONNECTING_TO_NETWORK
+void receive(const MyMessage &message)              // Handles incoming messages from the controller
 {
+  Serial.println(F(">> receiving message"));
+  connected_to_network = true;
+
+#ifdef DEBUG
   Serial.print(F("INCOMING MESSAGE for child #")); Serial.println(message.sensor);
+#endif
+
   if (message.isAck()) {
-    Serial.println(F("-Ack"));
-    connectedToNetwork = true;
+    Serial.println(F("-Echo"));
   }
+  else if (message.type == V_STATUS && message.sensor == DATA_TRANSMISSION_CHILD_ID ){
+    transmission_state = message.getBool();
+    Serial.print(F("-New desired transmission state: ")); Serial.println(transmission_state);
+    send(relay_message.setSensor(DATA_TRANSMISSION_CHILD_ID).set(transmission_state));
+  }  
 #ifdef HAS_TOUCH_SCREEN
   else if( message.type==V_STATUS && message.sensor == SCREEN_BUTTON_CHILD_ID ){
     boolean desired_state = message.getBool();
     Serial.print(F("-Requested status: ")); Serial.println(desired_state);
-    turnOnScreen(desired_state);                // Set the touch screen brightness
+    turnOnScreen(desired_state);                    // Set the touch screen brightness
   }
 #endif
 }
-
+#endif // End of allow_connecting_to_network
 
 
 
