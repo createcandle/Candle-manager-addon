@@ -2,24 +2,31 @@
 
 version=$(grep version package.json | cut -d: -f2 | cut -d\" -f2)
 
-if [ -z "${ADDON_ARCH}" ]; then
-  TARFILE_SUFFIX=
-else
-  PYTHON_VERSION="$(python3 --version 2>&1 | cut -d' ' -f2 | cut -d. -f 1-2)"
-  TARFILE_SUFFIX="-${ADDON_ARCH}-v${PYTHON_VERSION}"
-fi
 
 # Clean up from previous releases
 rm -rf *.tgz package SHA256SUMS lib
 
-python -c "import json, os; \
-    fname = os.path.join(os.getcwd(), 'package.json'); \
-    d = json.loads(open(fname).read()); \
-    d['files'] = filter(lambda x: not x.startswith('arduino-cli/') or x.startswith('arduino-cli/${ADDON_ARCH}/'), d['files']); \
-    f = open(fname, 'wt'); \
-    json.dump(d, f, indent=2); \
-    f.close()
-"
+if [ -z "${ADDON_ARCH}" ]; then
+  TARFILE_SUFFIX=
+  
+else
+  PYTHON_VERSION="$(python3 --version 2>&1 | cut -d' ' -f2 | cut -d. -f 1-2)"
+  TARFILE_SUFFIX="-${ADDON_ARCH}-v${PYTHON_VERSION}"
+  
+  python -c "import json, os; \
+      fname = os.path.join(os.getcwd(), 'package.json'); \
+      d = json.loads(open(fname).read()); \
+      d['files'] = filter(lambda x: not x.startswith('arduino-cli/') or x.startswith('arduino-cli/${ADDON_ARCH}/'), d['files']); \
+      f = open(fname, 'wt'); \
+      json.dump(d, f, indent=2); \
+      f.close()
+  "
+  
+fi
+
+
+
+
 
 # keep only the compiled DS binary that we need
 #find arduino-cli -mindepth 1 -maxdepth 1 \! -name "${ADDON_ARCH}" -exec rm -rf {} \;
@@ -39,10 +46,8 @@ cp -r lib pkg arduino-cli css images js views package/
 if [ -z "${ADDON_ARCH}" ]; then
 	echo "no specific addon architecture selected"
 else
-	cd package
 	# keep only the compiled DS binary that we need
 	find arduino-cli -mindepth 1 -maxdepth 1 \! -name "${ADDON_ARCH}" -exec rm -rf {} \;
-	cd ..
 fi
 
 find package -type f -name '*.pyc' -delete
