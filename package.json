@@ -1,100 +1,104 @@
 {
-  "files": [
-    "LICENSE", 
-    "README.md", 
-    "SHA256SUMS", 
-    "lib", 
-    "main.py", 
-    "manifest.json", 
-    "pkg/__init__.py", 
-    "pkg/candle_adapter.py", 
-    "boards.txt", 
-    "css/main.css", 
-    "css/extension.css", 
-    "css/wizard.css", 
-    "js/extension.js", 
-    "images/candle_logo_simple.png", 
-    "images/menu-icon.svg", 
-    "views/content.html", 
-    "pkg/static/css/main.css", 
-    "pkg/static/css/wizard.css", 
-    "pkg/static/js/jquery-3.4.1.min.js", 
-    "pkg/static/js/main.js", 
-    "pkg/static/js/wizard.jquery.js", 
-    "pkg/static/images/candle_logo_simple.png", 
-    "pkg/templates/index.html", 
-    "source/Candle_cleaner/Candle_cleaner.ino", 
-    "code/Candle_cleaner/Candle_cleaner.ino"
-  ], 
-  "display_name": "Candle manager", 
-  "name": "Candle-manager-addon", 
-  "license": "MPL-2.0", 
-  "author": "CreateCandle", 
+  "name": "Candle-manager-addon",
+  "display_name": "Candle manager",
+  "version": "1.1.0",
+  "description": "Candle manager allows you to upload sketches to an Arduino.",
+  "author": "CreateCandle",
+  "main": "main.py",
+  "keywords": [
+    "privacy",
+    "iot",
+    "webthings",
+    "mysensors",
+    "arduino"
+  ],
+  "homepage": "https://github.com/createcandle/Candle-manager-addon",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/createcandle/Candle-manager-addon.git"
+  },
   "bugs": {
     "url": "https://github.com/createcandle/Candle-manager-addon/issues"
-  }, 
-  "repository": {
-    "url": "https://github.com/createcandle/Candle-manager-addon.git", 
-    "type": "git"
-  }, 
-  "version": "1.1.0", 
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "SHA256SUMS",
+    "lib",
+    "main.py",
+    "manifest.json",
+    "pkg/__init__.py",
+    "pkg/candle_adapter.py",
+    "boards.txt",
+    "arduino-cli/darwin-x64/arduino-cli",
+    "arduino-cli/linux-arm/arduino-cli",
+    "arduino-cli/linux-arm64/arduino-cli",
+    "arduino-cli/linux-x64/arduino-cli",
+    "css/main.css",
+    "css/extension.css",
+    "css/wizard.css",
+    "js/extension.js",
+    "images/candle_logo_simple.png",
+    "images/menu-icon.svg",
+    "views/content.html",
+    "pkg/static/css/main.css",
+    "pkg/static/css/wizard.css",
+    "pkg/static/js/jquery-3.4.1.min.js",
+    "pkg/static/js/main.js",
+    "pkg/static/js/wizard.jquery.js",
+    "pkg/static/images/candle_logo_simple.png",
+    "pkg/templates/index.html",
+    "source/Candle_cleaner/Candle_cleaner.ino",
+    "code/Candle_cleaner/Candle_cleaner.ino"
+  ],
   "moziot": {
+    "api": {
+      "min": 2,
+      "max": 2
+    },
+    "plugin": true,
+    "exec": "python3 {path}/main.py",
+    "config": {
+      "Password": "changeme",
+      "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json",
+      "Arduino type": "Arduino Nano",
+      "Advanced": false,
+      "Debug": false
+    },
     "schema": {
+      "type": "object",
       "required": [
-        "Password", 
+        "Password",
         "Arduino type"
-      ], 
-      "type": "object", 
+      ],
       "properties": {
-        "Sketches": {
-          "type": "string", 
-          "description": "Advanced. If you enter the URL of an Arduino sketch (.ino file) it will be downloaded and become available in the sketches list. You can also enter a link to a json file with multiple sketches."
-        }, 
-        "Debug": {
-          "type": "boolean", 
-          "description": "Advanced. Enable this to see much more detail in the internal WebThings Gateway log about what this add-on is doing."
-        }, 
         "Password": {
-          "type": "string", 
+          "type": "string",
           "description": "A password for the security (encryption and/or signing) of the Candle/MySensors network. If you change this you will have to manually re-upload code to all your Candle/MySensors devices."
-        }, 
+        },
+        "Sketches": {
+          "type": "string",
+          "description": "Advanced. If you enter the URL of an Arduino sketch (.ino file) it will be downloaded and become available in the sketches list. You can also enter a link to a json file with multiple sketches."
+        },
         "Arduino type": {
+          "type": "string",
           "enum": [
-            "Arduino Nano", 
-            "Arduino Uno", 
+            "Arduino Nano",
+            "Arduino Uno",
             "Arduino Mega"
-          ], 
-          "type": "string", 
+          ],
           "description": "Advanced. What type of Arduino you will connect? The Candle project works with the Arduino Nano."
-        }, 
+        },
         "Advanced": {
-          "type": "boolean", 
+          "type": "boolean",
           "description": "Advanced. Show the advanced interface? This will give you extra options and details."
+        },
+        "Debug": {
+          "type": "boolean",
+          "description": "Advanced. Enable this to see much more detail in the internal WebThings Gateway log about what this add-on is doing."
         }
       }
-    }, 
-    "api": {
-      "max": 2, 
-      "min": 2
-    }, 
-    "config": {
-      "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json", 
-      "Debug": false, 
-      "Password": "changeme", 
-      "Arduino type": "Arduino Nano", 
-      "Advanced": false
-    }, 
-    "exec": "python3 {path}/main.py", 
-    "plugin": true
-  }, 
-  "keywords": [
-    "privacy", 
-    "iot", 
-    "webthings", 
-    "mysensors", 
-    "arduino"
-  ], 
-  "main": "main.py", 
-  "homepage": "https://github.com/createcandle/Candle-manager-addon", 
-  "description": "Candle manager allows you to upload sketches to an Arduino."
+    }
+  }
 }
