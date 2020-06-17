@@ -4,7 +4,7 @@
   "version": "1.1.0",
   "description": "Candle manager allows you to upload sketches to an Arduino.",
   "author": "CreateCandle",
-  "main": "bootstrap.py",
+  "main": "main.py",
   "keywords": [
     "privacy",
     "iot",
@@ -22,14 +22,14 @@
     "url": "https://github.com/createcandle/Candle-manager-addon/issues"
   },
   "files": [
-    "manifest.json",
     "LICENSE",
+    "README.md",
     "SHA256SUMS",
-    "bootstrap.py",
+    "lib",
     "main.py",
+    "manifest.json",
     "pkg/__init__.py",
     "pkg/candle_adapter.py",
-    "requirements.txt",
     "boards.txt",
     "arduino-cli/darwin-x64/arduino-cli",
     "arduino-cli/linux-arm/arduino-cli",
@@ -59,7 +59,7 @@
       "max": 2
     },
     "plugin": true,
-    "exec": "python3 {path}/bootstrap.py",
+    "exec": "python3 {path}/main.py",
     "config": {
       "Password": "changeme",
       "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json",

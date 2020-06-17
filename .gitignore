@@ -1,6 +1,9 @@
 *.pyc
+*.sha256sum
+*.swp
 *.tgz
-/lib/
-/package/
+lib/
+package/
 /source/
 !/source/Candle_cleaner/
+SHA256SUMS
