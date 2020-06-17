@@ -1,42 +1,52 @@
-#!/bin/bash
-
-set -e
+#!/bin/bash -e
 
 version=$(grep version package.json | cut -d: -f2 | cut -d\" -f2)
 
+if [ -z "${ADDON_ARCH}" ]; then
+  TARFILE_SUFFIX=
+else
+  PYTHON_VERSION="$(python3 --version 2>&1 | cut -d' ' -f2 | cut -d. -f 1-2)"
+  TARFILE_SUFFIX="-${ADDON_ARCH}-v${PYTHON_VERSION}"
+fi
+
 # Clean up from previous releases
-rm -rf *.tgz package lib
-rm -f SHA256SUMS
-rm -rf ._*
+rm -rf *.tgz package SHA256SUMS lib
+
+python -c "import json, os; \
+    fname = os.path.join(os.getcwd(), 'package.json'); \
+    d = json.loads(open(fname).read()); \
+    d['files'] = filter(lambda x: not x.startswith('arduino-cli/') or x.startswith('arduino-cli/${ADDON_ARCH}/'), d['files']); \
+    f = open(fname, 'wt'); \
+    json.dump(d, f, indent=2); \
+    f.close()
+"
+
+# keep only the compiled DS binary that we need
+find arduino-cli -mindepth 1 -maxdepth 1 \! -name "${ADDON_ARCH}" -exec rm -rf {} \;
 
 # Put package together
-mkdir package
-mkdir package/source
-mkdir package/source/Candle_cleaner
-mkdir package/code
-mkdir package/code/Candle_cleaner
-cp source/Candle_cleaner/Candle_cleaner.ino package/source/Candle_cleaner/Candle_cleaner.ino
-cp source/Candle_cleaner/Candle_cleaner.ino package/code/Candle_cleaner/Candle_cleaner.ino
+mkdir -p lib package/source/Candle_cleaner package/code/Candle_cleaner
+cp source/Candle_cleaner/Candle_cleaner.ino package/source/Candle_cleaner/
+cp source/Candle_cleaner/Candle_cleaner.ino package/code/Candle_cleaner/
 
 # Pull down Python dependencies
-pip3 install -r requirements.txt -t lib --no-binary flask,pyserial,requests --prefix ""
+pip3 install -r requirements.txt -t lib --no-binary :all: --prefix ""
 
-
-cp *.py manifest.json package.json LICENSE README.md boards.txt requirements.txt setup.cfg  package/
+# Put package together
+cp *.py manifest.json package.json LICENSE README.md boards.txt package/
 cp -r lib pkg arduino-cli css images js views package/
 find package -type f -name '*.pyc' -delete
 find package -type d -empty -delete
-echo "prepared the files in the package directory"
 
 # Generate checksums
 cd package
-find . -type f \! -name SHA256SUMS -exec sha256sum {} \; >> SHA256SUMS
-#sha256sum *.py pkg/*.py LICENSE requirements.txt setup.cfg > SHA256SUMS
-cd ..
-echo "generated checksums"
+find . -type f \! -name SHA256SUMS -exec shasum --algorithm 256 {} \; >> SHA256SUMS
+cd -
 
 # Make the tarball
-tar czf "Candle-manager-addon-${version}.tgz" package
-sha256sum "Candle-manager-addon-${version}.tgz"
+TARFILE="Candle-manager-addon-${version}${TARFILE_SUFFIX}.tgz"
+tar czf ${TARFILE} package
 
+shasum --algorithm 256 ${TARFILE} > ${TARFILE}.sha256sum
 
+rm -rf SHA256SUMS package
