@@ -521,13 +521,16 @@ class CandleAdapter(Adapter):
             #command = self.arduino_cli_path + '/arduino-cli lib list --all --format=json' # perhaps use os.path.join(self.add_on_path, 'arduino-cli') + 'lib list --all --format=json' ?
             command = os.path.join(self.arduino_cli_path, 'arduino-cli') + ' lib list --all --format=json'
             command_output = run_command_json(command,10) # Sets a time limit for how long the command can take.
-            #print("Installed arduino libs command_output: " + str(command_output))
-            if command_output != None:
+            if self.DEBUG:
+                print("Installed arduino libs command_output: " + str(command_output))
+                
+            if command_output != None and command_output != "":
                 if self.DEBUG:
                     print("Installed libraries according to Arduino CLI: " + str(command_output))
                     
                 installed_libraries_response = json.loads(command_output)
-                #print("installed_libraries_response = " + str(installed_libraries_response))
+                if self.DEBUG:
+                    print("installed_libraries_response = " + str(installed_libraries_response))
                 #for lib_object in installed_libraries_response['libraries']:
                 for lib_object in installed_libraries_response:
                     try:
@@ -636,7 +639,7 @@ class CandleAdapter(Adapter):
         try:    
             ports = prtlst.comports()
             for port in ports:
-                if 'USB' in port[1]: #check 'USB' string in device description
+                if 'USB' in port[1] or 'Arduino' in port[1]: #check 'USB' string in device description
                     #if self.DEBUG:
                     #    print("port: " + str(port[0]))
                     #    print("usb device description: " + str(port[1]))
