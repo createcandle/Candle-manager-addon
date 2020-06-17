@@ -112,8 +112,6 @@ class CandleAdapter(Adapter):
                 self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-arm')
             elif machine == 'x86_64':
                 self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-x64')
-            else:
-                self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-ia32')
             #else:
             #    print('Unknown platform!')
             #    self.arduino_cli_path = None
