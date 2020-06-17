@@ -34,7 +34,6 @@
     "arduino-cli/darwin-x64/arduino-cli",
     "arduino-cli/linux-arm/arduino-cli",
     "arduino-cli/linux-arm64/arduino-cli",
-    "arduino-cli/linux-ia32/arduino-cli",
     "arduino-cli/linux-x64/arduino-cli",
     "css/main.css",
     "css/extension.css",
