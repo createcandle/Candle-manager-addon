@@ -22,7 +22,7 @@ python -c "import json, os; \
 "
 
 # keep only the compiled DS binary that we need
-find arduino-cli -mindepth 1 -maxdepth 1 \! -name "${ADDON_ARCH}" -exec rm -rf {} \;
+#find arduino-cli -mindepth 1 -maxdepth 1 \! -name "${ADDON_ARCH}" -exec rm -rf {} \;
 
 # Put package together
 mkdir -p lib package/source/Candle_cleaner package/code/Candle_cleaner
@@ -35,18 +35,30 @@ pip3 install -r requirements.txt -t lib --no-binary :all: --prefix ""
 # Put package together
 cp *.py manifest.json package.json LICENSE README.md boards.txt package/
 cp -r lib pkg arduino-cli css images js views package/
+
+if [ -z "${ADDON_ARCH}" ]; then
+	echo "no specific addon architecture selected"
+else
+	cd package
+	# keep only the compiled DS binary that we need
+	find arduino-cli -mindepth 1 -maxdepth 1 \! -name "${ADDON_ARCH}" -exec rm -rf {} \;
+	cd ..
+fi
+
 find package -type f -name '*.pyc' -delete
 find package -type d -empty -delete
 
 # Generate checksums
 cd package
+echo "generating checksums"
 find . -type f \! -name SHA256SUMS -exec shasum --algorithm 256 {} \; >> SHA256SUMS
 cd -
 
 # Make the tarball
+echo "compressing the files"
 TARFILE="Candle-manager-addon-${version}${TARFILE_SUFFIX}.tgz"
 tar czf ${TARFILE} package
 
 shasum --algorithm 256 ${TARFILE} > ${TARFILE}.sha256sum
 
-rm -rf SHA256SUMS package
+#rm -rf SHA256SUMS package
