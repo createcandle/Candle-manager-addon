@@ -12,18 +12,6 @@ fi
 # Clean up from previous releases
 rm -rf *.tgz package SHA256SUMS lib
 
-python -c "import json, os; \
-    fname = os.path.join(os.getcwd(), 'package.json'); \
-    d = json.loads(open(fname).read()); \
-    d['files'] = filter(lambda x: not x.startswith('arduino-cli/') or x.startswith('arduino-cli/${ADDON_ARCH}/'), d['files']); \
-    f = open(fname, 'wt'); \
-    json.dump(d, f, indent=2); \
-    f.close()
-"
-
-# keep only the compiled DS binary that we need
-find arduino-cli -mindepth 1 -maxdepth 1 \! -name "${ADDON_ARCH}" -exec rm -rf {} \;
-
 # Put package together
 mkdir -p lib package/source/Candle_cleaner package/code/Candle_cleaner
 cp source/Candle_cleaner/Candle_cleaner.ino package/source/Candle_cleaner/
@@ -38,8 +26,21 @@ cp -r lib pkg arduino-cli css images js views package/
 find package -type f -name '*.pyc' -delete
 find package -type d -empty -delete
 
-# Generate checksums
 cd package
+
+python -c "import json, os; \
+    fname = os.path.join(os.getcwd(), 'package.json'); \
+    d = json.loads(open(fname).read()); \
+    d['files'] = filter(lambda x: not x.startswith('arduino-cli/') or x.startswith('arduino-cli/${ADDON_ARCH}/'), d['files']); \
+    f = open(fname, 'wt'); \
+    json.dump(d, f, indent=2); \
+    f.close()
+"
+
+# keep only the compiled DS binary that we need
+find arduino-cli -mindepth 1 -maxdepth 1 \! -name "${ADDON_ARCH}" -exec rm -rf {} \;
+
+# Generate checksums
 find . -type f \! -name SHA256SUMS -exec shasum --algorithm 256 {} \; >> SHA256SUMS
 cd -
 
