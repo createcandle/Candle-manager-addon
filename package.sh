@@ -28,7 +28,7 @@ find package -type d -empty -delete
 
 cd package
 
-python -c "import json, os; \
+python3 -c "import json, os; \
     fname = os.path.join(os.getcwd(), 'package.json'); \
     d = json.loads(open(fname).read()); \
     d['files'] = filter(lambda x: not x.startswith('arduino-cli/') or x.startswith('arduino-cli/${ADDON_ARCH}/'), d['files']); \
