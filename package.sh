@@ -31,7 +31,7 @@ cd package
 python3 -c "import json, os; \
     fname = os.path.join(os.getcwd(), 'package.json'); \
     d = json.loads(open(fname).read()); \
-    d['files'] = filter(lambda x: not x.startswith('arduino-cli/') or x.startswith('arduino-cli/${ADDON_ARCH}/'), d['files']); \
+    d['files'] = list(filter(lambda x: not x.startswith('arduino-cli/') or x.startswith('arduino-cli/${ADDON_ARCH}/'), d['files'])); \
     f = open(fname, 'wt'); \
     json.dump(d, f, indent=2); \
     f.close()
