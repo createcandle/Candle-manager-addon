@@ -34,7 +34,7 @@ try:
     from .api_handler import * #CandleManagerAPIHandler
     print("CandleManagerAPIHandler imported.")
 except:
-    print("Unable to load CandleManagerAPIHandler (which is used for UX extention)")
+    print("Unable to load CandleManagerAPIHandler (which is used for UI extention)")
 
 
 
@@ -480,19 +480,25 @@ class CandleAdapter(Adapter):
         # Updating Arduino CLI index
         try:
             command = self.arduino_cli_path + '/arduino-cli core update-index'
-            print("ARDUINO UPDATE COMMAND = " + str(command))
+            if self.DEBUG:
+                print("ARDUINO UPDATE COMMAND = " + str(command))
             
             #bla = run_command(command).splitlines()
             #print("bla = " + str(bla))
-            for line in run_command(command).splitlines():
-                #if self.DEBUG:
-                print(line)
-                if line.startswith('Command failed'):
-                    print("CLI update index failed")
-                elif line.startswith('Command success'):
-                    if self.DEBUG:
-                        print("CLI update index success")
-                    index_updated = True
+            command_output = run_command(command, 120)
+            if command_output != None:
+                for line in run_command(command).splitlines():
+                    #if self.DEBUG:
+                    print(line)
+                    if line.startswith('Command failed'):
+                        print("Error: CLI update index failed")
+                        print("- PROBLEMATIC ARDUINO UPDATE COMMAND WAS: " + str(command))
+                    elif line.startswith('Command success'):
+                        if self.DEBUG:
+                            print("CLI update index success")
+                        index_updated = True
+            else:
+                print("Error: Arduino core update command timed out. Do you have a (slow) internet connection?")
                 #time.sleep(.1)
         except Exception as e:
             print("Error sending Arduino CLI update index command: " + str(e))
@@ -501,16 +507,20 @@ class CandleAdapter(Adapter):
         if index_updated:
             try:
                 command = self.arduino_cli_path + '/arduino-cli core install arduino:avr'
-                for line in run_command(command,120).splitlines():
-                    if self.DEBUG:
-                        print(line)
-                    if line.startswith('Command failed'):
-                        print("CLI update AVR failed")
-                    elif line.startswith('Command success'):
+                command_output = run_command(command,120)
+                if command_output != None:
+                    for line in run_command(command,120).splitlines():
                         if self.DEBUG:
-                            print("CLI update AVR success")
-                        success = True
-                    #time.sleep(.1)
+                            print(line)
+                        if line.startswith('Command failed'):
+                            print("CLI update AVR failed")
+                        elif line.startswith('Command success'):
+                            if self.DEBUG:
+                                print("CLI update AVR success")
+                            success = True
+                else:
+                    print("Error: Arduino AVR download command timed out. Do you have a (slow) internet connection?")
+                        #time.sleep(.1)
             except Exception as e:
                 print("Error sending Arduino CLI update AVR command: " + str(e))
         return success
@@ -538,7 +548,9 @@ class CandleAdapter(Adapter):
                             print("Found library: " + str(lib_object['library']['name']))
                         self.installed_libraries.add(str(lib_object['library']['name']))
                     except Exception as e:
-                        print("Could not add a library to list of installed libraries: " + str(e))
+                        print("Warning: could not add a library to list of installed libraries: " + str(e))
+            else:
+                print("Erro: Unable to check installed Arduino libraries")
         except Exception as e:
             print("Failed to check libraries: " + str(e))
     
@@ -1064,7 +1076,8 @@ class CandleAdapter(Adapter):
                         print("Downloading Arduino library: " + str(library_name))
                         command = self.arduino_cli_path + '/arduino-cli lib install "' + str(library_name) + '"'
                         try:
-                            for line in run_command(command).splitlines():
+                            compile_output = run_command(command)
+                            for line in compile_output.splitlines():
                                 if self.DEBUG:
                                     print(line)
                                 if line.startswith( 'Error' ):
@@ -1103,19 +1116,21 @@ class CandleAdapter(Adapter):
 
 
             command = self.arduino_cli_path + '/arduino-cli compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
-            for line in run_command(command).splitlines():
-                #line = line.decode('utf-8')
-                if self.DEBUG:
-                    print(line)
-                if line.startswith( 'Error' ) and not line.startswith( 'Error: exit status 1' ):
-                    if not self.DEBUG:
+            compile_output = run_command(command)
+            if compile_output != None:
+                for line in compile_output.splitlines():
+                    #line = line.decode('utf-8')
+                    if self.DEBUG:
                         print(line)
-                    errors.append(line)
-                if line.startswith('Command failed'):
-                    result["message"] = "Compiling failed"
-                elif line.startswith('Command success'):
-                    result["message"] = "Compiled succesfully."
-                    result["success"] = True
+                    if line.startswith( 'Error' ) and not line.startswith( 'Error: exit status 1' ):
+                        if not self.DEBUG:
+                            print(line)
+                        errors.append(line)
+                    if line.startswith('Command failed'):
+                        result["message"] = "Compiling failed"
+                    elif line.startswith('Command success'):
+                        result["message"] = "Compiled succesfully."
+                        result["success"] = True
 
                 #time.sleep(.1)
         except Exception as e:
