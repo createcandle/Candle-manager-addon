@@ -2,8 +2,10 @@
 *.sha256sum
 *.swp
 *.tgz
-lib/
-package/
+*~
+.DS_Store
+._*
+/lib/
+/package/
 /source/
 !/source/Candle_cleaner/
-SHA256SUMS
