@@ -1,6 +1,18 @@
 {
   "author": "CreateCandle",
-  "description": "MySensors add-on for Mozilla WebThings Gateway",
+  "content_scripts": [
+    {
+      "css": [
+        "css/extension.css",
+        "css/main.css",
+        "css/wizard.css"
+      ],
+      "js": [
+        "js/extension.js"
+      ]
+    }
+  ],
+  "description": "Candle manager allows you to upload code to an Arduino",
   "gateway_specific_settings": {
     "webthings": {
       "exec": "python3 {path}/main.py",
@@ -9,87 +21,61 @@
       "strict_min_version": "0.10.0"
     }
   },
-  "homepage_url": "https://github.com/createcandle/Webthings-mysensors-adapter",
-  "id": "mysensors-adapter",
+  "homepage_url": "https://github.com/createcandle/Candle-manager-addon",
+  "id": "Candle-manager-addon",
   "license": "MPL-2.0",
   "manifest_version": 1,
-  "name": "MySensors",
+  "name": "Candle manager",
   "options": {
     "default": {
-      "Gateway": "USB Serial gateway",
-      "Metric": true,
-      "Optimize things": true,
-      "Timeout period": "60",
-      "USB device name": "",
-      "IP address": "",
-      "MQTT password": "",
-      "MQTT username": "",
-      "MQTT in prefix": "mygateway1-out",
-      "MQTT out prefix": "mygateway1-in",
-      "Debugging": false
+    "Password": "changeme",
+      "Arduino type": "Arduino Nano",
+      "Sketches": "https://raw.githubusercontent.com/createcandle/candle_source_code_list/master/candle_source_code_list.json",
+      "Advanced": false,
+      "Debug": false
     },
     "schema": {
       "properties": {
-        "Gateway": {
-          "description": "How are you talking to the MySensors network? Via a USB device is most common.",
+        "Password": {
+          "description": "A password for the security (encryption and/or signing) of the Candle/MySensors network. If you change this you will have to manually re-upload code to all your Candle/MySensors devices.",
+          "type": "string"
+        },
+        "Arduino type": {
+          "description": "Advanced. What type of Arduino you will connect? The Candle project works with the Arduino Nano.",
           "enum": [
-            "USB Serial gateway",
-            "Ethernet gateway",
-            "MQTT gateway"
+            "Arduino Nano",
+            "Arduino Uno",
+            "Arduino Mega"
           ],
           "type": "string"
         },
-        "Metric": {
-          "description": "Check the box to request metric units from the devices. Uncheck it to request they send data in imperial units instead.",
+        "Sketches": {
+          "description": "Advanced. If you enter the URL of an Arduino sketch (.ino file) it will be downloaded and become available in the sketches list. You can also enter a link to a json file with multiple sketches.",
+          "type": "string"
+        },
+        "Advanced": {
+          "description": "Advanced. Show the advanced interface? This will give you extra options and details.",
           "type": "boolean"
         },
-        "Optimize things": {
-          "description": "Split up big things into separate smaller things. For example, a device with 4 toggles could become 4 devices with one toggle.",
-          "type": "boolean"
-        },
-        "Timeout period": {
-          "description": "After how many minutes of inactivity should a device be reported as no longer connected? If you set this to 0, devices will always be set to fully available (even if they are not).",
-          "type": "string"
-        },
-        "USB device name": {
-          "description": "If you leave this empty, the add-on will automatically search for a connceted MySensors gateway device. If you want you can manually override this proces by providing a serial port name here. On a Linux device this would be something like '/dev/ttyUSB0'.",
-          "type": "string"
-        },
-        "IP address": {
-          "description": "If you are using an ethernet gateway or MQTT server, what is its IP address? You can try 127.0.0.1 if it's installed on the same computer as the Mozilla WebThings gateway.",
-          "type": "string"
-        },
-        "MQTT password": {
-          "description": "The password for MQTT security.",
-          "type": "string"
-        },
-        "MQTT username": {
-          "description": "The username for MQTT security.",
-          "type": "string"
-        },
-        "MQTT in prefix": {
-          "description": "The topic prefix for incoming messages messages.",
-          "type": "string"
-        },
-        "MQTT out prefix": {
-          "description": "The topic prefix for outgoing messages.",
-          "type": "string"
-        },
-        "Debugging": {
-          "description": "Debugging allows you to diagnose any issues with the add-on. If enabled it will result in a lot more debug data in the internal log (which can be found under settings -> developer -> view internal logs).",
+        "Debug": {
+          "description": "Advanced. Enable this to see much more detail in the internal WebThings Gateway log about what this add-on is doing.",
           "type": "boolean"
         }
       },
       "required": [
-        "Gateway",
-        "Optimize things",
-        "Metric",
-        "Timeout period",
-        "Debugging"
+        "Password",
+        "Arduino type"
       ],
       "type": "object"
     }
   },
-  "short_name": "MySensors",
-  "version": "1.1.3"
+  "short_name": "Candle Mgr",
+  "version": "1.1.3",
+  "web_accessible_resources": [
+    "css/*.css",
+    "images/*.svg",
+    "images/candle_logo_simple.png",
+    "js/*.js",
+    "views/*.html"
+  ]
 }
