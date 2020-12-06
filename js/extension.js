@@ -10,6 +10,8 @@
         .then((res) => res.text())
         .then((text) => {
           this.content = text;
+		  console.log("fetch done");
+		  this.show();
         })
         .catch((e) => console.error('Failed to fetch content:', e));
 			
@@ -38,6 +40,7 @@
 			console.log("Candle manager received show command.");
 			//console.log(this.content);
       	  	this.view.innerHTML = this.content;
+			console.log(this.content);
 			
 			
 			//var full_lan_path = "http://gateway.local:8686"
@@ -64,11 +67,11 @@
 			
 			window.API.postJson(
 		        `/extensions/${this.id}/api/full_lan_path`,
-		        {'ssl':https_in_url,'hostname':window.location.hostname} // Not currently used
+		        {'ssl':https_in_url,'hostname':window.location.hostname}
 		      ).then((body) => {
 						//full_lan_path = body['full_lan_path'];
 						console.log("API response:");
-						//console.log(body);
+						console.log(body);
 						//if( 'https://' + window.location.hostname + ':8686' != body['full_lan_path'] ){
 						//	document.getElementById('extension-Candle-manager-addon-iframe').src = 'data:text/html,\'<p style="color:white;font-family:arial,sans-serif; margin:4rem auto"><strong>The manager cannot be displayed (yet)</strong><br/><br/> - It might still be starting up. You can try reloading the page in a few seconds.<br/><br/>- Alternatively, you can try to visit <a target="_blank" href="' + body['full_lan_path'] + '">directly</a>. There you may have to create a security exception.</p>\'';
 						//}
