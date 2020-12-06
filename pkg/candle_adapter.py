@@ -1,9 +1,9 @@
 """Candle adapter for WebThings Gateway."""
 
-sys.path.append(path.join(path.dirname(path.abspath(__file__)), 'lib'))
 
 import os
 import sys
+sys.path.append(path.join(path.dirname(path.abspath(__file__)), 'lib'))
 import time
 from time import sleep
 #from datetime import datetime, timedelta
