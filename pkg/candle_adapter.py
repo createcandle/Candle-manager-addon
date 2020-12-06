@@ -1,4 +1,4 @@
-"""Candle adapter for Mozilla WebThings Gateway."""
+"""Candle adapter for WebThings Gateway."""
 
 import os
 import sys
@@ -6,7 +6,7 @@ import time
 from time import sleep
 #from datetime import datetime, timedelta
 #import traceback
-import asyncio
+#import asyncio
 import logging
 import urllib
 import requests
@@ -24,7 +24,6 @@ import serial #as ser
 import serial.tools.list_ports as prtlst
 from flask import Flask,Response,request,render_template,jsonify,url_for
 
-#import asyncio
 
 from gateway_addon import Adapter, Device, Database
 
@@ -51,7 +50,7 @@ __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 _CONFIG_PATHS = [
-    os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'config'),
+    os.path.join(os.path.expanduser('~'), '.webthings', 'config'),
 ]
 
 if 'MOZIOT_HOME' in os.environ:
@@ -77,8 +76,8 @@ class CandleAdapter(Adapter):
         self.adding_via_timer = False
         self.pairing = False
         self.name = self.__class__.__name__
-        self.adapter_name = 'Candle-manager-addon'
-        Adapter.__init__(self, self.adapter_name, self.adapter_name, verbose=verbose)
+        self.addon_name = 'Candle-manager-addon'
+        Adapter.__init__(self, self.addon_name, self.addon_name, verbose=verbose)
         #print("Adapter ID = " + self.get_id())
         
         print("paths:" + str(_CONFIG_PATHS))
@@ -91,33 +90,40 @@ class CandleAdapter(Adapter):
         #        )
         
         
-        #self.persistence_path = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'addons','data',self.adapter_name)
+        #self.persistence_path = os.path.join(os.path.expanduser('~'), '.webthings', 'addons','data',self.adapter_name)
         #if not os.path.exists(directory):
         #    os.makedirs(directory)
         #self.persistence_file = os.path.join(self.persistence_path,'persistence.json')
         
         
-        self.add_on_path = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'addons','Candle-manager-addon')
-        print("self.add_on_path = " + str(self.add_on_path))
+        self.addon_path =  os.path.join(self.user_profile['addonsDir'], self.addon_name)
+        self.data_path = os.path.join(self.user_profile['dataDir'], self.addon_name)
+        self.code_path = os.path.join(self.data_path, 'code')
+        self.source_path = os.path.join(self.data_path, 'source')
      
+        
+        if not os.path.exists(self.code_path):
+            os.makedirs(self.code_path)
+        if not os.path.exists(self.source_path):
+            os.makedirs(self.source_path)
 
         if sys.platform == 'darwin':
-            self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'darwin-x64')
+            self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'darwin-x64')
         elif sys.platform == 'linux':
             machine = os.uname().machine
 
             if machine == 'aarch64':
-                self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-arm64')
+                self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'linux-arm64')
             elif machine.startswith('arm'):
-                self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-arm')
+                self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'linux-arm')
             elif machine == 'x86_64':
-                self.arduino_cli_path = os.path.join(self.add_on_path, 'arduino-cli', 'linux-x64')
+                self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'linux-x64')
             #else:
             #    print('Unknown platform!')
             #    self.arduino_cli_path = None
      
      
-        print("self.arduino_cli_path = " + str(self.arduino_cli_path))
+        
         
         self.DEBUG = True
         self.DEVELOPMENT = False
@@ -137,22 +143,27 @@ class CandleAdapter(Adapter):
         self.busy_downloading_libraries = False
         self.initial_update_done = False
         
-        # Respond to gateway version
+        # Get the user's settings
+        self.add_from_config()
+        
+        # Output some debug data
         try:
             if self.DEBUG:
+                
+                print("self.addon_path = " + str(self.addon_path))
+                print("self.code_path = " + str(self.code_path))
+                print("self.arduino_cli_path = " + str(self.arduino_cli_path))
                 print("Gateway version: " + self.gateway_version)
+                
             self.gateway_version_array = self.gateway_version.split(".")
             
         except:
             print("self.gateway_version did not exist")
         
         
-        # Get the user's settings
-        self.add_from_config()
-        
         
         # Detect if SSL is enabled
-        ssl_folder = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'ssl')
+        ssl_folder = os.path.join(self.user_profile['baseDir'], 'ssl')
         self.certificate_path = os.path.join(ssl_folder, 'certificate.pem')
         self.privatekey_path = os.path.join(ssl_folder, 'privatekey.pem')
         
@@ -183,7 +194,7 @@ class CandleAdapter(Adapter):
         # Create the Candle thing
         if self.create_candle_manager_thing is True:
             try:
-                #if self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10: # temporarily disabled, since users were having issues if they used Mozilla's proxy service.
+                #if self.gateway_version_array[0] == "0" and int(self.gateway_version_array[1]) < 10: # temporarily disabled, since users were having issues if they used the proxy service.
                 device = CandleDevice(self)
                 self.handle_device_added(device)
                 #if self.DEBUG:
@@ -281,7 +292,7 @@ class CandleAdapter(Adapter):
             #    flask_log = logging.getLogger('werkzeug')
             #    flask_log.setLevel(logging.ERROR)
 
-            app = Flask(__name__, root_path= os.path.join(self.add_on_path, 'pkg') )
+            app = Flask(__name__, root_path= os.path.join(self.addon_path, 'pkg') )
 
             @app.route('/') # The home page
             def index():
@@ -432,7 +443,7 @@ class CandleAdapter(Adapter):
         try:
             # Get JSON list of already installed Arduino libraries        
             print("Looking for already installed libraries")
-            self.required_libraries = set(["MySensors", "SSD1306Ascii", "DallasTemperature","OneWire", "Grove - Barometer Sensor BME280", "SoftwareSerial"]) # some hardcoded libraries that are required
+            self.required_libraries = set(["MySensors", "SSD1306Ascii", "DallasTemperature","OneWire", "Grove_-_Barometer_Sensor_BME280", "SoftwareSerial"]) # some hardcoded libraries that are required
         
             self.check_installed_arduino_libraries()
 
@@ -445,11 +456,14 @@ class CandleAdapter(Adapter):
         # Pre-compile the cleaner code
         self.cleaner_pre_compiled = False
         try:
-            hex_filename = "Candle_cleaner.arduino.avr." + str(self.arduino_type) + ".hex"
-            #cleaner_hex_path = self.add_on_path + "/code/Candle_cleaner/Candle_cleaner.arduino.avr." + self.arduino_type + ".hex"
-            cleaner_hex_path = os.path.join(self.add_on_path,'code','Candle_cleaner',hex_filename)
+            #hex_filename = "Candle_cleaner.arduino.avr." + str(self.arduino_type) + ".hex"
+            #cleaner_hex_path = self.addon_path + "/code/Candle_cleaner/Candle_cleaner.arduino.avr." + self.arduino_type + ".hex"
+            cleaner_hex_path = os.path.join(self.data_path,'code','Candle_cleaner','build','arduino.avr.' + str(self.arduino_type),'Candle_cleaner.ino.with_bootloader.hex')
             if self.DEBUG:
                 print("cleaner_hex_path = " + str(cleaner_hex_path))
+            
+            
+            
             if os.path.isfile(cleaner_hex_path):
                 if self.DEBUG:
                     print("HEX file already existed, so no need to pre-compile the Candle Cleaner")
@@ -457,12 +471,19 @@ class CandleAdapter(Adapter):
             elif "Candle_cleaner" in self.sources:
                 if self.DEBUG:
                     print("Candle Cleaner was found at index " + str(self.sources.index("Candle_cleaner")))
+                    
+                # Create the CandleCleaner code
+                self.change_settings(self.sources.index("Candle_cleaner"), True, [2] )
+                   
+                # Then compile it
                 test_result = self.compile(self.sources.index("Candle_cleaner"))
                 if self.DEBUG:
                     print("Pre-compile result:" + str(test_result))
                 if test_result["success"] == True:
                     print("Succesfully pre-compiled the cleaner code")
                     self.cleaner_pre_compiled = True
+                else:
+                    print("Error: failed to pre-compile the candle cleaner")
             else:
                 print("Candle Cleaner was missing from the source directory")
         
@@ -528,8 +549,9 @@ class CandleAdapter(Adapter):
 
     def check_installed_arduino_libraries(self):
         try:
-            #command = self.arduino_cli_path + '/arduino-cli lib list --all --format=json' # perhaps use os.path.join(self.add_on_path, 'arduino-cli') + 'lib list --all --format=json' ?
+            #command = self.arduino_cli_path + '/arduino-cli lib list --all --format=json' # perhaps use os.path.join(self.addon_path, 'arduino-cli') + 'lib list --all --format=json' ?
             command = os.path.join(self.arduino_cli_path, 'arduino-cli') + ' lib list --all --format=json'
+            print("check_installed_arduino_libraries command = " + str(command))
             command_output = run_command_json(command,10) # Sets a time limit for how long the command can take.
             if self.DEBUG:
                 print("Installed arduino libs command_output: " + str(command_output))
@@ -585,6 +607,8 @@ class CandleAdapter(Adapter):
     
 		#else: # The update was already done recently.
 		#	result["success"] = True
+        
+        self.scan_source_dir()
 
         return result
 		
@@ -598,7 +622,7 @@ class CandleAdapter(Adapter):
         source_dir = os.path.basename(os.path.normpath( os.path.dirname(sketch_url) ))
         source_file = os.path.basename(sketch_url)
 
-        target_dir = os.path.join(self.add_on_path, "source", source_dir)
+        target_dir = os.path.join(self.source_path, source_dir)
         target_file = os.path.join(target_dir, source_file)
       
         if self.DEBUG:
@@ -743,9 +767,9 @@ class CandleAdapter(Adapter):
         
         try:
             if self.DEBUG:
-                print("Scanning " + str(self.add_on_path) + "/source")
+                print("Scanning " + str(self.source_path))
             file_list = []
-            for dentry in os.scandir(self.add_on_path + "/source"):
+            for dentry in os.scandir(self.source_path):
                 if not dentry.name.startswith('.') and dentry.is_dir():
                     file_list.append(dentry.name)
             self.sources = file_list
@@ -771,8 +795,10 @@ class CandleAdapter(Adapter):
         new_code = ""
         settings_counter = 0
         source_name = str(self.sources[int(source_id)])
-        path = str(self.add_on_path) + "/source/" + source_name  + "/" + source_name + ".ino"
-        print(path)
+        #path = str(self.addon_path) + "/source/" + source_name  + "/" + source_name + ".ino"
+        
+        path = os.path.join(self.source_path, source_name, source_name + '.ino')
+        print("change_settings source path: " + str(path))
         file = open(path, 'r')
         lines = file.readlines()
         file.close()
@@ -1024,6 +1050,7 @@ class CandleAdapter(Adapter):
             
             
             print("done scanning libraries")
+            print("The code has this number of settings: " + str(settings_counter))
             
             if settings_counter == len(new_values_list):
                 #print("settings_counter == len(new_values_list)")
@@ -1032,11 +1059,13 @@ class CandleAdapter(Adapter):
                 #print(new_code)
                 
                 source_name = str(self.sources[int(source_id)])
-                path = str(self.add_on_path) + "/code/" + source_name
+                path = os.path.join(self.code_path, source_name)
+                
                 if not os.path.exists(path):
                     print("created new directory: " + path)
                     os.makedirs(path)
-                path += "/" + source_name + ".ino"
+                #path += "/" + source_name + ".ino"
+                path = os.path.join(path, source_name + ".ino")
                 if self.DEBUG:
                     print("path to store new code file:" + str(path))
                 try:
@@ -1074,7 +1103,10 @@ class CandleAdapter(Adapter):
                 for library_name in self.required_libraries:
                     if str(library_name) not in self.installed_libraries:
                         print("Downloading Arduino library: " + str(library_name))
-                        command = self.arduino_cli_path + '/arduino-cli lib install "' + str(library_name) + '"'
+                        #command = self.arduino_cli_path + '/arduino-cli lib install "' + str(library_name) + '"'
+                        command = os.path.join(self.arduino_cli_path, 'arduino-cli')
+                        command = command + ' lib install "' + str(library_name) + '"'
+                        print("library install command: " + str(command))
                         try:
                             compile_output = run_command(command)
                             for line in compile_output.splitlines():
@@ -1101,21 +1133,27 @@ class CandleAdapter(Adapter):
     
     
     def compile(self, source_id):
-        print("Compiling")
+        
         result = {"success":False, "message":"Compiling failed"}
         errors = []
         
         try:
             source_name = str(self.sources[int(source_id)])
-            path = str(self.add_on_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
-
+            print("Compiling: " + str(source_name))
+            #path = str(self.addon_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
+            path = os.path.join(self.code_path, source_name)
+            
             if not os.path.isdir(path):
                 result["success"] = False
-                result["message"] = "Error: cannot find the file to upload."
+                result["message"] = "Error: source directory does not exist."
                 return result
 
 
-            command = self.arduino_cli_path + '/arduino-cli compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
+            #command = self.arduino_cli_path + '/arduino-cli compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
+            command = os.path.join(self.arduino_cli_path, 'arduino-cli')
+            command = str(command) + ' compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
+            print("command = " + str(command))
+            
             compile_output = run_command(command)
             if compile_output != None:
                 for line in compile_output.splitlines():
@@ -1141,7 +1179,7 @@ class CandleAdapter(Adapter):
 
 
 
-    def test_upload(self,source_id, port_id):
+    def test_upload(self, source_id, port_id):
         
         result = {"success":False,"message":"Testing"}
         errors = []
@@ -1222,11 +1260,15 @@ class CandleAdapter(Adapter):
             source_name = str(self.sources[int(source_id)])
             if self.DEBUG:
                 print("Code name: " + str(source_name))
-            path = str(self.add_on_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
+            #path = str(self.addon_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
+            path = os.path.join(self.code_path, source_name)
+            print("path to upload from: " + str(path))
+            #command = self.arduino_cli_path + '/arduino-cli upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
+            command = os.path.join(self.arduino_cli_path, 'arduino-cli')
+            command = command + ' upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
 
-            command = self.arduino_cli_path + '/arduino-cli upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
-            if self.DEVELOPMENT:
-                print("Arduino CLI command = " + str(command))
+            if self.DEBUG:
+                print("Arduino CLI upload command = " + str(command))
             for line in run_command(command).splitlines():
                 if line.startswith( 'Error' ) and not line.startswith( 'Error: exit status 1' ) and not line.startswith( 'Error during upload' ):
                     #if not self.DEBUG:
@@ -1384,11 +1426,12 @@ class CandleAdapter(Adapter):
         
             # Debug
             try:
-                if 'Debugging' in config:
-                    self.DEBUG = bool(config['Debugging'])
+                if 'Debug' in config:
+                    self.DEBUG = bool(config['Debug'])
                     if self.DEBUG:
                         print("Debugging is set to: " + str(self.DEBUG))
                 else:
+                    print("Debugging preference was not in the database?")
                     self.DEBUG = False
                 
             except:
@@ -1553,7 +1596,7 @@ def run_command(cmd, timeout_seconds=60):
             #yield("Command success")
         else:
             if p.stderr:
-                return "Error: " + str(p.stderr)  + '\n' + "Command failed"   #.decode('utf-8'))
+                return "Run command error: " + str(p.stderr)  + '\n' + "Command failed"   #.decode('utf-8'))
 
     except Exception as e:
         print("Error running Arduino CLI command: "  + str(e))
