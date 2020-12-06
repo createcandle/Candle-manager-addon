@@ -17,9 +17,9 @@ fi
 
 
 # Put package together
-mkdir -p lib package/source/Candle_cleaner package/code/Candle_cleaner
-cp source/Candle_cleaner/Candle_cleaner.ino package/source/Candle_cleaner/
-cp source/Candle_cleaner/Candle_cleaner.ino package/code/Candle_cleaner/
+mkdir -p lib package
+#cp source/Candle_cleaner/Candle_cleaner.ino package/source/Candle_cleaner/
+#cp source/Candle_cleaner/Candle_cleaner.ino package/code/Candle_cleaner/
 
 # Pull down Python dependencies
 pip3 install -r requirements.txt -t lib --no-binary :all: --prefix ""
