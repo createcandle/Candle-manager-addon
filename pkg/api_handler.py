@@ -1,4 +1,4 @@
-"""Example API handler."""
+"""Candle manager API handler."""
 
 
 import functools
