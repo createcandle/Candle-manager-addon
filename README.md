@@ -11,7 +11,7 @@ An add-on for the Mozilla WebThings Gateway. It allows you to upload code to Ard
 7. Done
 
 
-## Adding your own skethes
+## Adding your own sketches
 
 Open the settings page of the add-on and paste a link to your .ino file into the link field. Click 'apply'.
 
