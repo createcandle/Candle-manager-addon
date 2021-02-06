@@ -34,7 +34,7 @@ find package -type d -empty -delete
 cd package
 
 # keep only the compiled DS binary that we need
-find arduino-cli -mindepth 1 -maxdepth 1 \! -name "${ADDON_ARCH}" -exec rm -rf {} \;
+#find arduino-cli -mindepth 1 -maxdepth 1 \! -name "${ADDON_ARCH}" -exec rm -rf {} \;
 
 # Generate checksums
 echo "generating checksums"
