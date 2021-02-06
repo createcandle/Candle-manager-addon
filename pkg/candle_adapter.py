@@ -104,13 +104,17 @@ class CandleAdapter(Adapter):
             self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'darwin-x64')
         elif sys.platform == 'linux':
             machine = os.uname().machine
-
-            if machine == 'aarch64':
+            print("machine = " + str(machine))
+            if machine == 'aarch64' or machine == 'arm64':
                 self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'linux-arm64')
-            elif machine.startswith('arm'):
-                self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'linux-arm')
+            elif machine.startswith('armv7'):
+                self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'linux-armv7')
+            elif machine.startswith('armv6'):
+                self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'linux-armv6')
             elif machine == 'x86_64':
                 self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'linux-x64')
+            else:
+                self.arduino_cli_path = os.path.join(self.addon_path, 'arduino-cli', 'linux-armv6')
             #else:
             #    print('Unknown platform!')
             #    self.arduino_cli_path = None
@@ -142,9 +146,9 @@ class CandleAdapter(Adapter):
         # Output some debug data
         try:
             if self.DEBUG:
-                
                 print("self.addon_path = " + str(self.addon_path))
                 print("self.code_path = " + str(self.code_path))
+                print("os.uname().machine = " + str(os.uname().machine))
                 print("self.arduino_cli_path = " + str(self.arduino_cli_path))
                 print("Gateway version: " + self.gateway_version)
                 
@@ -181,7 +185,8 @@ class CandleAdapter(Adapter):
         else:
             self.full_lan_path = "http://" + self.full_lan_path
 
-        print("Path to Candle manager server = " + str(self.full_lan_path))
+        if self.DEBUG:
+            print("Path to Candle manager server = " + str(self.full_lan_path))
         
         
         # Create the Candle thing

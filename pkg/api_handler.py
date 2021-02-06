@@ -20,7 +20,7 @@ class CandleManagerAPIHandler(APIHandler):
 
     def __init__(self, adapter, verbose=False):
         """Initialize the object."""
-        print("INSIDE API HANDLER INIT")
+        #print("INSIDE API HANDLER INIT")
         try:
             manifest_fname = os.path.join(
                 os.path.dirname(__file__),
@@ -33,7 +33,7 @@ class CandleManagerAPIHandler(APIHandler):
             with open(manifest_fname, 'rt') as f:
                 manifest = json.load(f)
 
-            print("manifest['id'] = " + str(manifest['id']))
+            #print("manifest['id'] = " + str(manifest['id']))
             APIHandler.__init__(self, manifest['id'])
             #APIHandler.__init__(self, "poultry")
             self.adapter.manager_proxy.add_api_handler(self)
@@ -53,13 +53,14 @@ class CandleManagerAPIHandler(APIHandler):
         
         
         try:
-            #if self.adapter.DEBUG:
-            print(">>>>>> INCOMING API REQUEST <<<<<<<<<")
-            print(">>> REQUEST.PATH = " + str(request.path))
-            print(">>> REQUEST.BODY = " + str(request.body))
+            if self.adapter.DEBUG:
+                print(">>>>>> INCOMING API REQUEST <<<<<<<<<")
+                print(">>> REQUEST.PATH = " + str(request.path))
+                print(">>> REQUEST.BODY = " + str(request.body))
 
             if request.path == '/full_lan_path':
-                print("API call to full_lan_path")
+                if self.adapter.DEBUG:
+                    print("API call to full_lan_path")
                 try:
         
                     
@@ -74,6 +75,7 @@ class CandleManagerAPIHandler(APIHandler):
                             s.connect(('192.126.199.199', 1))
                             lan_ip = s.getsockname()[0]
                         except:
+                            print("Socket attempts to find IP failed: falling back to gateway.local")
                             lan_ip = 'gateway.local'
                         finally:
                             s.close()
