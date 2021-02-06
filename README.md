@@ -1,6 +1,9 @@
 # Candle-manager-addon
 An add-on for the Mozilla WebThings Gateway. It allows you to upload code to Arduino's with the click of a button.
 
+![Candle manager start screen](https://github.com/createcandle/Candle-manager-addon/blob/master/candle_manager_screenshot.png?raw=true)
+
+
 0. Install the add-on and reload the webpage.
 1. Open the Candle Manager from the menu.
 2. Plug in your Arduino via USB when asked to do so.
