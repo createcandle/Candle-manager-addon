@@ -120,7 +120,7 @@ class CandleAdapter(Adapter):
             #    self.arduino_cli_path = None
      
      
-        
+        os.system("sudo chmod +x " + str(self.arduino_cli_path))
         
         self.DEBUG = True
         self.DEVELOPMENT = False
