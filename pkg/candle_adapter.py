@@ -550,7 +550,7 @@ class CandleAdapter(Adapter):
             #command = self.arduino_cli_path + '/arduino-cli lib list --all --format=json' # perhaps use os.path.join(self.addon_path, 'arduino-cli') + 'lib list --all --format=json' ?
             command = os.path.join(self.arduino_cli_path, 'arduino-cli') + ' lib list --all --format=json'
             print("check_installed_arduino_libraries command = " + str(command))
-            command_output = run_command_json(command,10) # Sets a time limit for how long the command can take.
+            command_output = run_command_json(command,30) # Sets a time limit for how long the command can take.
             if self.DEBUG:
                 print("Installed arduino libs command_output: " + str(command_output))
                 
