@@ -119,7 +119,7 @@ class CandleAdapter(Adapter):
             #    print('Unknown platform!')
             #    self.arduino_cli_path = None
      
-     
+        self.arduino_cli_path = os.path.join(self.arduino_cli_path, 'arduino-cli')
         os.system("sudo chmod +x " + str(self.arduino_cli_path))
         
         self.DEBUG = True
@@ -441,7 +441,7 @@ class CandleAdapter(Adapter):
         try:
             # Get JSON list of already installed Arduino libraries        
             print("Looking for already installed libraries")
-            self.required_libraries = set(["MySensors", "SSD1306Ascii", "DallasTemperature","OneWire", "Grove - Barometer Sensor BME280", "SoftwareSerial"]) # some hardcoded libraries that are required
+            self.required_libraries = set(["MySensors", "SSD1306Ascii", "DallasTemperature","OneWire", "Grove_-_Barometer_Sensor_BME280", "SoftwareSerial"]) # some hardcoded libraries that are required
         
             self.check_installed_arduino_libraries()
 
@@ -498,7 +498,7 @@ class CandleAdapter(Adapter):
         
         # Updating Arduino CLI index
         try:
-            command = self.arduino_cli_path + '/arduino-cli core update-index'
+            command = self.arduino_cli_path + ' core update-index'
             if self.DEBUG:
                 print("ARDUINO UPDATE COMMAND = " + str(command))
             
@@ -525,7 +525,7 @@ class CandleAdapter(Adapter):
         # Downloading latest version of AVR for Arduino CLI, which allows it to work with the Arduino Nano, Uno and Mega
         if index_updated:
             try:
-                command = self.arduino_cli_path + '/arduino-cli core install arduino:avr'
+                command = self.arduino_cli_path + ' core install arduino:avr'
                 command_output = run_command(command,120)
                 if command_output != None:
                     for line in run_command(command,120).splitlines():
@@ -547,10 +547,10 @@ class CandleAdapter(Adapter):
 
     def check_installed_arduino_libraries(self):
         try:
-            #command = self.arduino_cli_path + '/arduino-cli lib list --all --format=json' # perhaps use os.path.join(self.addon_path, 'arduino-cli') + 'lib list --all --format=json' ?
-            command = os.path.join(self.arduino_cli_path, 'arduino-cli') + ' lib list --all --format=json'
+            #command = self.arduino_cli_path + ' lib list --all --format=json' # perhaps use os.path.join(self.addon_path, 'arduino-cli') + 'lib list --all --format=json' ?
+            command = self.arduino_cli_path + ' lib list --all --format=json'
             print("check_installed_arduino_libraries command = " + str(command))
-            command_output = run_command_json(command,30) # Sets a time limit for how long the command can take.
+            command_output = run_command_json(command,10) # Sets a time limit for how long the command can take.
             if self.DEBUG:
                 print("Installed arduino libs command_output: " + str(command_output))
                 
@@ -1101,9 +1101,7 @@ class CandleAdapter(Adapter):
                 for library_name in self.required_libraries:
                     if str(library_name) not in self.installed_libraries:
                         print("Downloading Arduino library: " + str(library_name))
-                        #command = self.arduino_cli_path + '/arduino-cli lib install "' + str(library_name) + '"'
-                        command = os.path.join(self.arduino_cli_path, 'arduino-cli')
-                        command = command + ' lib install "' + str(library_name) + '"'
+                        command = self.arduino_cli_path + ' lib install "' + str(library_name) + '"'
                         print("library install command: " + str(command))
                         try:
                             compile_output = run_command(command)
@@ -1146,10 +1144,7 @@ class CandleAdapter(Adapter):
                 result["message"] = "Error: source directory does not exist."
                 return result
 
-
-            #command = self.arduino_cli_path + '/arduino-cli compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
-            command = os.path.join(self.arduino_cli_path, 'arduino-cli')
-            command = str(command) + ' compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
+            command = self.arduino_cli_path + ' compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
             print("command = " + str(command))
             
             compile_output = run_command(command)
@@ -1261,9 +1256,8 @@ class CandleAdapter(Adapter):
             #path = str(self.addon_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
             path = os.path.join(self.code_path, source_name)
             print("path to upload from: " + str(path))
-            #command = self.arduino_cli_path + '/arduino-cli upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
-            command = os.path.join(self.arduino_cli_path, 'arduino-cli')
-            command = command + ' upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
+            
+            command = self.arduino_cli_path + ' upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
 
             if self.DEBUG:
                 print("Arduino CLI upload command = " + str(command))
