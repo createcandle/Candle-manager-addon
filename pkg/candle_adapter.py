@@ -488,6 +488,8 @@ class CandleAdapter(Adapter):
         except Exception as e:
             print("initial pre-compilation failed: " + str(e))
         
+        if self.DEBUG:
+            print("initial update complete")
         self.initial_update_done = True
 
 
@@ -550,7 +552,7 @@ class CandleAdapter(Adapter):
             #command = self.arduino_cli_path + ' lib list --all --format=json' # perhaps use os.path.join(self.addon_path, 'arduino-cli') + 'lib list --all --format=json' ?
             command = self.arduino_cli_path + ' lib list --all --format=json'
             print("check_installed_arduino_libraries command = " + str(command))
-            command_output = run_command_json(command,10) # Sets a time limit for how long the command can take.
+            command_output = run_command_json(command,120) # Sets a time limit for how long the command can take.
             if self.DEBUG:
                 print("Installed arduino libs command_output: " + str(command_output))
                 
@@ -1018,7 +1020,7 @@ class CandleAdapter(Adapter):
                     if matched:
                         if str(matched.group(2)) == "avr" or str(matched.group(2)) == "AVR":
                             if self.DEBUG:
-                                print("avr, so skipping")
+                                print("avr (built-in), so skipping")
                             continue # AVR libraries should already be installed
                         if matched.group(3) != None:
                             library_name = str(matched.group(3))
@@ -1135,17 +1137,20 @@ class CandleAdapter(Adapter):
         
         try:
             source_name = str(self.sources[int(source_id)])
-            print("Compiling: " + str(source_name))
+            if self.DEBUG:
+                print("Compiling: " + str(source_name))
             #path = str(self.addon_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
-            path = os.path.join(self.code_path, source_name)
+            path = os.path.join(self.code_path, source_name) # ,'build'
+            build_path = os.path.join(self.code_path, source_name ,'build')
             
             if not os.path.isdir(path):
                 result["success"] = False
                 result["message"] = "Error: source directory does not exist."
                 return result
 
-            command = self.arduino_cli_path + ' compile -v --fqbn arduino:avr:' + self.arduino_type + ' ' + str(path)
-            print("command = " + str(command))
+            command = self.arduino_cli_path + ' compile -e -v --fqbn arduino:avr:' + str(self.arduino_type) + ' --build-path ' + str(build_path) + " " + str(path)
+            if self.DEBUG:
+                print("compile command = " + str(command))
             
             compile_output = run_command(command)
             if compile_output != None:
@@ -1201,6 +1206,8 @@ class CandleAdapter(Adapter):
         
         try:
             if "Candle_cleaner" in self.sources:
+                if self.DEBUG:
+                    print("Candle_cleaner seems to exist, will do test upload")
                 test_result = self.upload(self.sources.index("Candle_cleaner"), str(port_id), self.bootloader)
                 if self.DEBUG:
                     print("first test result:" + str(test_result))
@@ -1233,7 +1240,8 @@ class CandleAdapter(Adapter):
 
 
     def upload(self, source_id, port_id, bootloader=""):
-        print("Uploading")
+        if self.DEBUG:
+            print("Uploading")
         if self.DEBUG:
             print("bootloader parameter = " + str(bootloader))
         result = {"success":False,"message":"Upload failed"}
@@ -1244,9 +1252,10 @@ class CandleAdapter(Adapter):
             return result
         
         try:
-            close_serial_port(str(port_id))
-        except:
-            pass
+            self.close_serial_port(str(port_id))
+        except Exception as ex:
+            if self.DEBUG:
+                print("unable to close serial port (this is not an issue): " + str(ex))
             
         errors = []
         try:
@@ -1254,13 +1263,14 @@ class CandleAdapter(Adapter):
             if self.DEBUG:
                 print("Code name: " + str(source_name))
             #path = str(self.addon_path) + "/code/" + source_name  #+ "/" + source_name + ".ino"
-            path = os.path.join(self.code_path, source_name)
-            print("path to upload from: " + str(path))
+            path = os.path.join(self.code_path, source_name, 'build','arduino.avr.' + str(self.arduino_type)) # e.g. build/arduino.avr.nano/
+            if self.DEBUG:
+                print("path to upload from: " + str(path))
             
-            command = self.arduino_cli_path + ' upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' ' + str(path)
-
+            command = str(self.arduino_cli_path) + ' upload -p ' + str(port_id) + ' --fqbn arduino:avr:' + self.arduino_type + str(bootloader) + ' --input-dir ' + str(path)
             if self.DEBUG:
                 print("Arduino CLI upload command = " + str(command))
+                
             for line in run_command(command).splitlines():
                 if line.startswith( 'Error' ) and not line.startswith( 'Error: exit status 1' ) and not line.startswith( 'Error during upload' ):
                     #if not self.DEBUG:
@@ -1392,7 +1402,7 @@ class CandleAdapter(Adapter):
         print("Shutting down adapter")
         try:
             for port_name in self.previous_serial_devices:
-                close_serial_port(str(port_name))
+                self.close_serial_port(str(port_name))
         except:
             print("Unable to cleanly close the add-on")
 
