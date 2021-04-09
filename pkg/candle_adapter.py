@@ -1034,10 +1034,10 @@ class CandleAdapter(Adapter):
                             if library_name not in self.installed_libraries and library_name not in self.required_libraries:
                                 
                                 
-                                for installed_library_name in self.installed_libraries:
-                                    if installed_library_name in library_name:
-                                        print("Library is an expanded name of an already installed library, skipping.")
-                                        continue
+                                #for installed_library_name in self.installed_libraries:
+                                #    if installed_library_name in library_name:
+                                #        print("Library is an expanded name of an already installed library, skipping.")
+                                #        continue
                                 
                                 print("->Not installed yet")
                                 self.required_libraries.add(str(library_name))
