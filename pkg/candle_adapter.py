@@ -1215,7 +1215,8 @@ class CandleAdapter(Adapter):
                 if test_result["success"] is True:
                     print("Test upload succeeded on the first try")
                     result["success"] = True
-                elif "Error syncing up with the Arduino" in test_result["errors"]:
+                #elif "Error syncing up with the Arduino" in test_result["errors"]:
+                else:
                     print("sync error was spotted in error list")
                     self.bootloader = ':cpu=atmega328old' if self.bootloader == ':cpu=atmega328' else ':cpu=atmega328'
                     print("new bootloader value: " + str(self.bootloader))
