@@ -441,7 +441,7 @@ class CandleAdapter(Adapter):
         try:
             # Get JSON list of already installed Arduino libraries        
             print("Looking for already installed libraries")
-            self.required_libraries = set(["MySensors", "SSD1306Ascii", "DallasTemperature","OneWire", "Grove_-_Barometer_Sensor_BME280", "SoftwareSerial"]) # some hardcoded libraries that are required
+            self.required_libraries = set(["MySensors", "SSD1306Ascii", "SSD1306AsciiAvrI2c", "DallasTemperature", "OneWire", "Grove - Barometer Sensor BME280", "SoftwareSerial"]) # some hardcoded libraries that are required
         
             self.check_installed_arduino_libraries()
 
