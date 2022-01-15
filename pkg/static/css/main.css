@@ -1,6 +1,7 @@
 
 body{
-    background-color: #5d9bc7;
+    /*background-color: #5d9bc7;*/
+    background:transparent;
     font-family: 'Montserrat', 'Helvetica', 'Arial', sans-serif;
     color: #343434;
     line-height: 1.4rem;
@@ -37,7 +38,7 @@ body{
 
 #content{
     margin-top:3rem;
-    background-color:#bbb;
+    background-color: rgba(0,0,0,.4);
     color:white;
     border-radius:1rem;
     padding:1rem;
