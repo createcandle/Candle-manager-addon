@@ -66,7 +66,7 @@ class CandleManagerAPIHandler(APIHandler):
                     
                         
                     
-                    self.full_lan_path = "gateway.local:8686"
+                    self.full_lan_path = "candle.local:8686"
                         
                     try:
                         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -75,8 +75,8 @@ class CandleManagerAPIHandler(APIHandler):
                             s.connect(('192.126.199.199', 1))
                             lan_ip = s.getsockname()[0]
                         except:
-                            print("Socket attempts to find IP failed: falling back to gateway.local")
-                            lan_ip = 'gateway.local'
+                            print("Socket attempts to find IP failed: falling back to candle.local")
+                            lan_ip = 'candle.local'
                         finally:
                             s.close()
                         
@@ -86,12 +86,12 @@ class CandleManagerAPIHandler(APIHandler):
         
         
         
-                    if self.adapter.ssl_enabled:
-                        self.full_lan_path = "https://" + self.full_lan_path
-                    else:
-                        self.full_lan_path = "http://" + self.full_lan_path
+                    #if self.adapter.ssl_enabled:
+                    #    self.full_lan_path = "https://" + self.full_lan_path
+                    #else:
+                    #    self.full_lan_path = "http://" + self.full_lan_path
         
-                    response = {'ssl_enabled':self.adapter.ssl_enabled, 'full_lan_path':self.full_lan_path}
+                    response = {'ssl_certificate_detected':self.adapter.ssl_certificate_detected, 'full_lan_path':self.full_lan_path, 'debug':self.adapter.DEBUG}
                     if self.adapter.DEBUG:
                         print("Returning local path: " + str(response))
         

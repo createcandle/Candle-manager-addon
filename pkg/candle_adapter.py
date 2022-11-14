@@ -1,4 +1,4 @@
-"""Candle adapter for WebThings Gateway."""
+"""Candle adapter for Candle Controller / WebThings Gateway."""
 
 
 import os
@@ -126,7 +126,7 @@ class CandleAdapter(Adapter):
         self.DEVELOPMENT = False
         
         self.port = 8686
-        self.ssl_enabled = False
+        self.ssl_certificate_detected = False
         self.json_sketches_url = ""
         self.simple_password = ""
         self.arduino_type = "nano"
@@ -169,18 +169,20 @@ class CandleAdapter(Adapter):
         
         if os.path.isfile(self.certificate_path):
             if self.DEBUG:
-                print("found a certificate, assuming SSL/Tunnel is enabled")
-            self.ssl_enabled = True
+                print("spotted a SSL certificate file, assuming SSL/Tunnel is enabled")
+            #self.ssl_certificate_detected = True # TODO: tmeporarily disabled https for the flask server. Might give better user experience.
+        else:
+            if self.DEBUG:
+                print("did not spot ssl certificate file, assuming SSL/Tunnel is disabled")
         
-        
-        self.full_lan_path = "gateway.local:8686"
+        self.full_lan_path = "candle.local:8686"
         try:
             lan_ip = get_ip()
             self.full_lan_path = str(lan_ip) + ":8686/"
         except Exception as ex:
             print("Error, unable to get local lan path: " + str(ex))
 
-        if self.ssl_enabled:
+        if self.ssl_certificate_detected:
             self.full_lan_path = "https://" + self.full_lan_path
         else:
             self.full_lan_path = "http://" + self.full_lan_path
@@ -400,7 +402,7 @@ class CandleAdapter(Adapter):
                         values['q'] = int(os.stat(file_path).st_mtime)
                 return url_for(endpoint, **values)
             
-            if self.ssl_enabled:
+            if self.ssl_certificate_detected:
                 print("Running Flask as https")
                 app.run(host='0.0.0.0', debug=True, use_reloader=False, port=self.port, ssl_context=(self.certificate_path, self.privatekey_path) )
             else:
@@ -1030,7 +1032,7 @@ class CandleAdapter(Adapter):
                             except:
                                 pass
                             print("library name:" + str(library_name))
-                        if library_name is not "" and library_name is not None:
+                        if library_name != "" and library_name != None:
                             if library_name not in self.installed_libraries and library_name not in self.required_libraries:
                                 
                                 
@@ -1638,7 +1640,7 @@ def get_ip():
         s.connect(('10.255.255.255', 1))
         IP = s.getsockname()[0]
     except:
-        IP = 'gateway.local'
+        IP = 'candle.local'
     finally:
         s.close()
     return IP
