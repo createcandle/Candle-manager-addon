@@ -1,5 +1,9 @@
-# Candle-manager-addon
+# Candle manager addon
 An add-on for the Candle Controller / WebThings Gateway. It allows you to upload code to Arduino's with the click of a button.
+
+An overview of available devies can be found on the Candle website under "research":
+
+https://www.candlesmarthome.com/
 
 ![Candle manager start screen](https://github.com/createcandle/Candle-manager-addon/blob/master/candle_manager_screenshot.png?raw=true)
 
