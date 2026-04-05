@@ -5,7 +5,9 @@ An overview of available devies can be found on the Candle website under "resear
 
 https://www.candlesmarthome.com/
 
-![Candle manager start screen](https://github.com/createcandle/Candle-manager-addon/blob/master/candle_manager_screenshot.png?raw=true)
+![Candle manager start screen](https://github.com/createcandle/Candle-manager-addon/blob/master/screenshot.png?raw=true)
+
+![Candle manager example by Dinie Besems](https://github.com/createcandle/Candle-manager-addon/blob/master/screenshot.jpg?raw=true)
 
 
 0. Install the add-on using the Candle store.
